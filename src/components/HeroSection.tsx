@@ -1,6 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
@@ -35,12 +36,14 @@ const HeroSection = () => {
           Launch Platform
           <ArrowRight className="w-5 h-5" />
         </Button>
-        <Button 
-          variant="outline" 
-          className="border-gray-600 text-gray-300 hover:text-white hover:border-white bg-transparent px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
-        >
-          Read Documentation
-        </Button>
+        <Link to="/docs">
+          <Button 
+            variant="outline" 
+            className="border-gray-600 text-gray-300 hover:text-white hover:border-white bg-transparent px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
+          >
+            Read Documentation
+          </Button>
+        </Link>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   return (
@@ -12,12 +13,14 @@ const Header = () => {
       </div>
       
       <div className="flex items-center space-x-4">
-        <Button 
-          variant="ghost" 
-          className="text-white hover:text-purple-200 hover:bg-white/10 transition-all duration-300"
-        >
-          Read Documentation
-        </Button>
+        <Link to="/docs">
+          <Button 
+            variant="ghost" 
+            className="text-white hover:text-purple-200 hover:bg-white/10 transition-all duration-300"
+          >
+            Read Documentation
+          </Button>
+        </Link>
         <Button 
           className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg transition-all duration-300 hover:scale-105"
         >

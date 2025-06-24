@@ -8,6 +8,9 @@ import Index from "./pages/Index";
 import Documentation from "./pages/Documentation";
 import Login from "./pages/Login";
 import BankDashboard from "./pages/BankDashboard";
+import CatIssuedDashboard from "./pages/CatIssuedDashboard";
+import ActiveRequestsDashboard from "./pages/ActiveRequestsDashboard";
+import TotalCompaniesDashboard from "./pages/TotalCompaniesDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +26,9 @@ const App = () => (
           <Route path="/docs" element={<Documentation />} />
           <Route path="/login" element={<Login />} />
           <Route path="/bank-dashboard" element={<BankDashboard />} />
+          <Route path="/bank-dashboard/cat-issued" element={<CatIssuedDashboard />} />
+          <Route path="/bank-dashboard/active-requests" element={<ActiveRequestsDashboard />} />
+          <Route path="/bank-dashboard/total-companies" element={<TotalCompaniesDashboard />} />
           <Route path="/company-dashboard" element={<BankDashboard />} />
           <Route path="/vendor-dashboard" element={<BankDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

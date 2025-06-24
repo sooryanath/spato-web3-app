@@ -4,6 +4,8 @@ import MetricsCards from "@/components/dashboard/MetricsCards";
 import CATRequestsTable from "@/components/dashboard/CATRequestsTable";
 import IssueTokensForm from "@/components/dashboard/IssueTokensForm";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import ActiveLoansTable from "@/components/dashboard/ActiveLoansTable";
+import DisputedLoansTable from "@/components/dashboard/DisputedLoansTable";
 
 const BankDashboard = () => {
   return (
@@ -21,6 +23,11 @@ const BankDashboard = () => {
             <IssueTokensForm />
             <RecentTransactions />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+          <ActiveLoansTable />
+          <DisputedLoansTable />
         </div>
       </div>
     </div>

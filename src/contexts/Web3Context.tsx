@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { connect, disconnect, getStarknet } from 'get-starknet-core';
+import { getStarknet } from 'get-starknet-core';
 import { AccountInterface, Contract } from 'starknet';
 
 interface Web3ContextType {
@@ -50,7 +50,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkConnection = async () => {
       try {
         const starknet = getStarknet();
-        if (starknet?.isConnected) {
+        if (starknet && starknet.isConnected) {
           setAccount(starknet.account);
           setIsConnected(true);
           // Mock balance for demo
@@ -67,12 +67,15 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const connectWallet = async () => {
     setIsConnecting(true);
     try {
-      const starknet = await connect();
-      if (starknet && starknet.isConnected) {
-        setAccount(starknet.account);
-        setIsConnected(true);
-        setBalance('1,250.50'); // Mock balance
-        console.log('Wallet connected successfully');
+      const starknet = getStarknet();
+      if (starknet) {
+        await starknet.enable();
+        if (starknet.isConnected && starknet.account) {
+          setAccount(starknet.account);
+          setIsConnected(true);
+          setBalance('1,250.50'); // Mock balance
+          console.log('Wallet connected successfully');
+        }
       }
     } catch (error) {
       console.error('Failed to connect wallet:', error);
@@ -82,11 +85,19 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const disconnectWallet = () => {
-    disconnect();
-    setAccount(null);
-    setIsConnected(false);
-    setBalance('0');
-    console.log('Wallet disconnected');
+    try {
+      const starknet = getStarknet();
+      if (starknet) {
+        // Note: get-starknet-core doesn't have a direct disconnect method
+        // We'll simulate disconnection by clearing our state
+        setAccount(null);
+        setIsConnected(false);
+        setBalance('0');
+        console.log('Wallet disconnected');
+      }
+    } catch (error) {
+      console.error('Error disconnecting wallet:', error);
+    }
   };
 
   const issueTokens = async (recipient: string, amount: string) => {

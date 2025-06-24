@@ -1,3 +1,4 @@
+
 import { getStarknet } from 'get-starknet-core';
 import { RpcProvider } from 'starknet';
 
@@ -259,21 +260,62 @@ export const formatTokenAmount = (amount: string, decimals: number = 18): { low:
   return { low, high };
 };
 
-// Parse Cairo u256 to readable amount
+// Enhanced token amount parsing with better error handling
 export const parseTokenAmount = (low: string, high: string, decimals: number = 18): string => {
-  const amountBN = (BigInt(high) << BigInt(128)) + BigInt(low);
-  const divisor = BigInt(10 ** decimals);
-  const wholePart = amountBN / divisor;
-  const fractionalPart = amountBN % divisor;
-  
-  if (fractionalPart === BigInt(0)) {
-    return wholePart.toString();
+  try {
+    console.log(`🔢 Parsing token amount - low: ${low}, high: ${high}, decimals: ${decimals}`);
+    
+    // Validate inputs
+    if (!low && !high) {
+      console.warn('⚠️ Both low and high are empty, returning 0');
+      return '0';
+    }
+    
+    // Handle cases where values might be undefined or null
+    const safeLow = low ? low.toString() : '0';
+    const safeHigh = high ? high.toString() : '0';
+    
+    // Convert to BigInt safely
+    let lowBN: bigint;
+    let highBN: bigint;
+    
+    try {
+      lowBN = BigInt(safeLow);
+      highBN = BigInt(safeHigh);
+    } catch (conversionError) {
+      console.error('❌ Error converting to BigInt:', conversionError);
+      return '0';
+    }
+    
+    // Reconstruct the full amount
+    const amountBN = (highBN << BigInt(128)) + lowBN;
+    console.log(`🔢 Reconstructed amount BigInt: ${amountBN.toString()}`);
+    
+    if (amountBN === BigInt(0)) {
+      return '0';
+    }
+    
+    const divisor = BigInt(10 ** decimals);
+    const wholePart = amountBN / divisor;
+    const fractionalPart = amountBN % divisor;
+    
+    console.log(`🔢 Whole part: ${wholePart}, Fractional part: ${fractionalPart}`);
+    
+    if (fractionalPart === BigInt(0)) {
+      return wholePart.toString();
+    }
+    
+    const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
+    const trimmedFractional = fractionalStr.replace(/0+$/, '');
+    
+    const result = trimmedFractional ? `${wholePart}.${trimmedFractional}` : wholePart.toString();
+    console.log(`✅ Final parsed amount: ${result}`);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Error parsing token amount:', error);
+    return '0';
   }
-  
-  const fractionalStr = fractionalPart.toString().padStart(decimals, '0');
-  const trimmedFractional = fractionalStr.replace(/0+$/, '');
-  
-  return trimmedFractional ? `${wholePart}.${trimmedFractional}` : wholePart.toString();
 };
 
 // Enhanced transaction status checker with retry logic
@@ -309,7 +351,14 @@ export const checkTransactionStatus = async (provider: any, txHash: string, maxR
 
 // Utility function to format numbers with commas
 export const formatNumberWithCommas = (num: string): string => {
-  const parts = num.split('.');
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return parts.join('.');
+  if (!num || num === '0') return '0';
+  
+  try {
+    const parts = num.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  } catch (error) {
+    console.error('❌ Error formatting number with commas:', error);
+    return num; // Return original if formatting fails
+  }
 };

@@ -11,7 +11,7 @@ export interface TokenMintResult {
 export interface TokenBalance {
   formatted: string;
   raw: { low: string; high: string };
-  isRealData: boolean; // New field to indicate if data is real or fallback
+  isRealData: boolean;
 }
 
 export interface MultiTokenBalance {
@@ -52,6 +52,58 @@ export class TokenService {
     }
   }
 
+  // Enhanced contract response validation
+  private validateContractResponse(response: any, tokenSymbol: string): { low: string; high: string } | null {
+    console.log(`🔍 Validating ${tokenSymbol} contract response:`, response);
+    
+    // Handle different response formats
+    if (!response) {
+      console.warn(`⚠️ ${tokenSymbol} response is null/undefined`);
+      return null;
+    }
+
+    // If response is already in the correct format
+    if (response.low !== undefined && response.high !== undefined) {
+      return {
+        low: response.low.toString(),
+        high: response.high.toString()
+      };
+    }
+
+    // If response is an array with two elements
+    if (Array.isArray(response) && response.length === 2) {
+      return {
+        low: response[0].toString(),
+        high: response[1].toString()
+      };
+    }
+
+    // If response has a different structure, try to extract values
+    if (typeof response === 'object') {
+      // Check for common alternative property names
+      const possibleLow = response.low || response[0] || response.value?.low;
+      const possibleHigh = response.high || response[1] || response.value?.high;
+      
+      if (possibleLow !== undefined && possibleHigh !== undefined) {
+        return {
+          low: possibleLow.toString(),
+          high: possibleHigh.toString()
+        };
+      }
+    }
+
+    // If it's a single value, treat as low with high = 0
+    if (typeof response === 'string' || typeof response === 'number') {
+      return {
+        low: response.toString(),
+        high: '0'
+      };
+    }
+
+    console.error(`❌ ${tokenSymbol} response format not recognized:`, response);
+    return null;
+  }
+
   async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
     try {
       console.log(`🪙 Minting ${amount} CAT tokens to ${recipient}`);
@@ -82,7 +134,7 @@ export class TokenService {
   }
 
   async getBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 2; // Reduced retries for faster response
+    const maxRetries = 2;
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -90,10 +142,16 @@ export class TokenService {
         console.log(`💰 Fetching CAT balance for ${address} (attempt ${retries + 1}/${maxRetries})`);
         
         const balance = await this.catContract.balance_of(address);
+        console.log('🔍 Raw CAT balance response:', balance);
+        
+        const validatedBalance = this.validateContractResponse(balance, 'CAT');
+        if (!validatedBalance) {
+          throw new Error('Invalid CAT balance response format');
+        }
         
         const formatted = parseTokenAmount(
-          balance.low.toString(), 
-          balance.high.toString(), 
+          validatedBalance.low, 
+          validatedBalance.high, 
           CONTRACT_CONFIG.decimals
         );
         
@@ -103,7 +161,7 @@ export class TokenService {
         
         return {
           formatted: formattedWithCommas,
-          raw: { low: balance.low.toString(), high: balance.high.toString() },
+          raw: validatedBalance,
           isRealData: true
         };
       } catch (error) {
@@ -129,7 +187,7 @@ export class TokenService {
   }
 
   async getStrkBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 2;
+    const maxRetries = 3;
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -138,10 +196,20 @@ export class TokenService {
         console.log(`🔗 Using STRK contract address: ${STRK_TOKEN_CONFIG.address}`);
         
         const balance = await this.strkContract.balance_of(address);
+        console.log('🔍 Raw STRK balance response:', balance);
+        console.log('🔍 STRK response type:', typeof balance);
+        console.log('🔍 STRK response keys:', balance ? Object.keys(balance) : 'no keys');
+        
+        const validatedBalance = this.validateContractResponse(balance, 'STRK');
+        if (!validatedBalance) {
+          throw new Error('Invalid STRK balance response format');
+        }
+        
+        console.log('🔍 Validated STRK balance:', validatedBalance);
         
         const formatted = parseTokenAmount(
-          balance.low.toString(), 
-          balance.high.toString(), 
+          validatedBalance.low, 
+          validatedBalance.high, 
           STRK_TOKEN_CONFIG.decimals
         );
         
@@ -151,12 +219,17 @@ export class TokenService {
         
         return {
           formatted: formattedWithCommas,
-          raw: { low: balance.low.toString(), high: balance.high.toString() },
+          raw: validatedBalance,
           isRealData: true
         };
       } catch (error) {
         retries++;
         console.error(`❌ Error getting STRK balance (attempt ${retries}):`, error);
+        console.error('🔍 Full STRK error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         
         if (retries >= maxRetries) {
           const fallbackBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
@@ -169,7 +242,7 @@ export class TokenService {
           };
         }
         
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1500 * retries)); // Increased delay
       }
     }
     
@@ -231,9 +304,14 @@ export class TokenService {
       
       const supply = await this.catContract.total_supply();
       
+      const validatedSupply = this.validateContractResponse(supply, 'CAT Supply');
+      if (!validatedSupply) {
+        throw new Error('Invalid total supply response format');
+      }
+      
       const formatted = parseTokenAmount(
-        supply.low.toString(), 
-        supply.high.toString(), 
+        validatedSupply.low, 
+        validatedSupply.high, 
         CONTRACT_CONFIG.decimals
       );
       
@@ -243,10 +321,7 @@ export class TokenService {
       
       return {
         formatted: formattedWithCommas,
-        raw: {
-          low: supply.low.toString(),
-          high: supply.high.toString()
-        },
+        raw: validatedSupply,
         isRealData: true
       };
     } catch (error) {

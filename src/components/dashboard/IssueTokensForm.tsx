@@ -73,7 +73,7 @@ const IssueTokensForm = () => {
       const selectedCompany = companies.find(c => c.id === company);
       toast({
         title: "Tokens Issued Successfully",
-        description: `${amount} CAT tokens have been minted for ${selectedCompany?.name || 'the selected company'}.`,
+        description: `${amount} CAT tokens have been issued for ${selectedCompany?.name || 'the selected company'}.`,
         variant: "default"
       });
       

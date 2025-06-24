@@ -17,25 +17,30 @@ const BankDashboard = () => {
       <div className="min-h-screen bg-gray-50">
         <DashboardHeader userType="Bank" userName="HDFC Bank" />
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <MetricsCards />
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-            <div className="lg:col-span-2">
+          {/* Main content grid - optimized for full screen */}
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 mt-6">
+            {/* Primary content area */}
+            <div className="xl:col-span-3 space-y-6">
               <CATRequestsTable />
+              
+              {/* Secondary tables in a responsive grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ActiveLoansTable />
+                <DisputedLoansTable />
+              </div>
             </div>
-            <div className="space-y-6">
+            
+            {/* Sidebar with tools and forms */}
+            <div className="xl:col-span-1 space-y-4">
               <WalletConnection />
               <TransactionStatus />
               <ContractDebugger />
               <IssueTokensForm />
               <RecentTransactions />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-            <ActiveLoansTable />
-            <DisputedLoansTable />
           </div>
         </div>
       </div>

@@ -1,17 +1,20 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getStarknet } from 'get-starknet-core';
 import { AccountInterface, Contract } from 'starknet';
+import { detectWallets, connectToWallet, WalletInfo } from '@/utils/walletUtils';
 
 interface Web3ContextType {
   account: AccountInterface | null;
   isConnected: boolean;
   isConnecting: boolean;
   balance: string;
-  connectWallet: () => Promise<void>;
+  chainId: string;
+  availableWallets: WalletInfo[];
+  connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => void;
   issueTokens: (recipient: string, amount: string) => Promise<void>;
   isIssuing: boolean;
+  walletAddress: string;
 }
 
 const Web3Context = createContext<Web3ContextType | undefined>(undefined);
@@ -43,56 +46,89 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [balance, setBalance] = useState('0');
+  const [chainId, setChainId] = useState('');
   const [isIssuing, setIsIssuing] = useState(false);
+  const [availableWallets, setAvailableWallets] = useState<WalletInfo[]>([]);
+  const [walletAddress, setWalletAddress] = useState('');
 
   useEffect(() => {
-    // Check if wallet is already connected
-    const checkConnection = async () => {
+    const initializeWallets = async () => {
       try {
-        // For now, we'll implement a simple mock connection check
-        // In a real implementation, you'd check if there's a stored connection
-        console.log('Checking for existing wallet connection...');
-        // Mock: assume no existing connection for now
+        const wallets = await detectWallets();
+        setAvailableWallets(wallets);
+        console.log('Available wallets detected:', wallets);
       } catch (error) {
-        console.error('Error checking wallet connection:', error);
+        console.error('Error initializing wallets:', error);
       }
     };
 
-    checkConnection();
+    initializeWallets();
   }, []);
 
-  const connectWallet = async () => {
+  useEffect(() => {
+    // Check if wallet is already connected on mount
+    const checkExistingConnection = async () => {
+      try {
+        // This would check for stored connection state
+        // For now, we'll skip auto-connection
+        console.log('Checking for existing wallet connection...');
+      } catch (error) {
+        console.error('Error checking existing connection:', error);
+      }
+    };
+
+    checkExistingConnection();
+  }, []);
+
+  const connectWallet = async (walletId?: string) => {
     setIsConnecting(true);
     try {
-      const starknet = getStarknet();
+      let walletInstance;
       
-      // The getStarknet() returns a discovery helper, we need to get available wallets
-      const availableWallets = await starknet.getAvailableWallets();
-      
-      if (availableWallets.length > 0) {
-        // Try to connect to the first available wallet
-        const wallet = availableWallets[0];
-        const walletInstance = await starknet.enable(wallet);
-        
-        if (walletInstance && walletInstance.account) {
-          setAccount(walletInstance.account);
-          setIsConnected(true);
-          setBalance('1,250.50'); // Mock balance
-          console.log('Wallet connected successfully');
-        }
+      if (walletId) {
+        // Connect to specific wallet
+        walletInstance = await connectToWallet(walletId);
       } else {
-        console.log('No StarkNet wallets found');
-        // For demo purposes, create a mock connection
+        // Try to connect to any available wallet (fallback)
+        const installedWallets = availableWallets.filter(w => w.installed);
+        if (installedWallets.length > 0) {
+          walletInstance = await connectToWallet(installedWallets[0].id);
+        } else {
+          throw new Error('No wallets available');
+        }
+      }
+
+      if (walletInstance?.account) {
+        setAccount(walletInstance.account);
+        setWalletAddress(walletInstance.account.address);
         setIsConnected(true);
+        
+        // Get network info if available
+        if (walletInstance.provider?.chainId) {
+          setChainId(walletInstance.provider.chainId);
+        }
+        
+        // Mock balance - in real app, you'd fetch from blockchain
         setBalance('1,250.50');
-        console.log('Mock wallet connected for demo');
+        
+        console.log('Wallet connected successfully:', {
+          address: walletInstance.account.address,
+          chainId: walletInstance.provider?.chainId
+        });
       }
     } catch (error) {
       console.error('Failed to connect wallet:', error);
-      // For demo purposes, create a mock connection even if real connection fails
-      setIsConnected(true);
-      setBalance('1,250.50');
-      console.log('Mock wallet connected for demo due to connection error');
+      
+      // For demo purposes, create a mock connection if real connection fails
+      if (process.env.NODE_ENV === 'development') {
+        setIsConnected(true);
+        setBalance('1,250.50');
+        setWalletAddress('0x1234567890abcdef1234567890abcdef12345678');
+        setChainId('0x534e5f474f45524c49'); // Goerli testnet
+        console.log('Mock wallet connected for demo due to connection error');
+      } else {
+        throw error;
+      }
     } finally {
       setIsConnecting(false);
     }
@@ -103,6 +139,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       setAccount(null);
       setIsConnected(false);
       setBalance('0');
+      setWalletAddress('');
+      setChainId('');
       console.log('Wallet disconnected');
     } catch (error) {
       console.error('Error disconnecting wallet:', error);
@@ -110,13 +148,12 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const issueTokens = async (recipient: string, amount: string) => {
-    if (!isConnected) {
+    if (!isConnected || !account) {
       throw new Error('Wallet not connected');
     }
 
     setIsIssuing(true);
     try {
-      // Mock token issuance for demo
       console.log(`Issuing ${amount} CAT tokens to ${recipient}`);
       
       // Simulate blockchain transaction delay
@@ -125,6 +162,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       // In a real implementation, you would:
       // const contract = new Contract(ERC20_ABI, CONTRACT_ADDRESS, account);
       // const result = await contract.mint(recipient, { low: amount, high: '0' });
+      // await account.waitForTransaction(result.transaction_hash);
       
       console.log('Tokens issued successfully');
     } catch (error) {
@@ -140,10 +178,13 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     isConnected,
     isConnecting,
     balance,
+    chainId,
+    availableWallets,
     connectWallet,
     disconnectWallet,
     issueTokens,
-    isIssuing
+    isIssuing,
+    walletAddress
   };
 
   return (

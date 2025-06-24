@@ -1,4 +1,3 @@
-
 import { Contract, AccountInterface, ProviderInterface } from 'starknet';
 import { CONTRACT_CONFIG, STRK_TOKEN_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus, formatNumberWithCommas, createProviderWithFailover } from '@/utils/walletUtils';
 
@@ -7,6 +6,7 @@ export interface TokenMintResult {
   status: 'pending' | 'confirmed' | 'failed';
   blockNumber?: string;
   blockHash?: string;
+  step?: 'add_bank' | 'mint_to_anchor' | 'completed';
 }
 
 export interface TokenBalance {
@@ -100,59 +100,52 @@ export class TokenService {
 
   async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
     try {
-      console.log(`🪙 Minting ${amount} CAT tokens to ${recipient} using contract ${CONTRACT_CONFIG.address}`);
+      console.log(`🪙 Starting two-step minting process: ${amount} CAT tokens to ${recipient}`);
       
-      // Format amount for Cairo u256
-      const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
-      console.log('🔢 Formatted amount for contract:', formattedAmount);
+      // Step 1: Add bank to authorized list
+      console.log('📝 Step 1: Adding bank to authorized list...');
+      const bankAddress = this.account.address;
       
-      // Try different mint function names to handle ABI mismatches
-      const mintFunctions = ['mint', 'Mint', 'mint_tokens', 'mintTokens'];
-      let result;
-      let usedFunction = '';
-      
-      for (const functionName of mintFunctions) {
-        try {
-          console.log(`📞 Attempting to call ${functionName} function...`);
-          
-          if (this.catContract[functionName]) {
-            result = await this.catContract[functionName](recipient, formattedAmount);
-            usedFunction = functionName;
-            console.log(`✅ Successfully called ${functionName} function`);
-            break;
-          } else {
-            console.log(`⚠️ Function ${functionName} not found in contract`);
-          }
-        } catch (error) {
-          console.error(`❌ Error calling ${functionName}:`, error);
-          
-          // If it's the last function to try, re-throw the error
-          if (functionName === mintFunctions[mintFunctions.length - 1]) {
-            throw error;
-          }
-          continue;
+      let addBankResult;
+      try {
+        addBankResult = await this.catContract.add_bank(bankAddress);
+        console.log('✅ Bank added successfully:', addBankResult.transaction_hash);
+      } catch (error: any) {
+        if (error.message?.includes('Bank already exists')) {
+          console.log('✅ Bank already authorized, proceeding to mint...');
+        } else {
+          console.error('❌ Failed to add bank:', error);
+          throw new Error(`Failed to authorize bank: ${error.message}`);
         }
       }
       
-      if (!result) {
-        throw new Error('No valid mint function found in contract. Available functions may not match the ABI.');
+      // Wait a moment for the add_bank transaction to be processed
+      if (addBankResult) {
+        console.log('⏳ Waiting for bank authorization to be processed...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
-      console.log(`✅ Mint transaction submitted using ${usedFunction}:`, result.transaction_hash);
+      // Step 2: Mint tokens to recipient
+      console.log('🪙 Step 2: Minting tokens to recipient...');
+      const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
+      console.log('🔢 Formatted amount for contract:', formattedAmount);
       
-      // Return initial result
-      const mintResult: TokenMintResult = {
-        transactionHash: result.transaction_hash,
-        status: 'pending'
+      const mintResult = await this.catContract.mint_to_anchor(recipient, formattedAmount);
+      console.log('✅ Tokens minted successfully:', mintResult.transaction_hash);
+      
+      const result: TokenMintResult = {
+        transactionHash: mintResult.transaction_hash,
+        status: 'pending',
+        step: 'completed'
       };
 
       // Monitor transaction status in background
-      this.monitorTransaction(result.transaction_hash, mintResult);
+      this.monitorTransaction(mintResult.transaction_hash, result);
       
-      return mintResult;
+      return result;
       
     } catch (error) {
-      console.error('❌ Error minting tokens:', error);
+      console.error('❌ Error in two-step minting process:', error);
       throw this.handleContractError(error);
     }
   }
@@ -403,20 +396,16 @@ export class TokenService {
       return new Error('Contract function not found - the contract ABI may not match the deployed contract. Please check the contract implementation.');
     }
     
-    if (error.message?.includes('response.flat is not a function')) {
-      return new Error('Contract response format error - the ABI definition may not match the actual contract methods.');
+    if (error.message?.includes('Bank already exists')) {
+      return new Error('Bank is already authorized. Retrying mint operation...');
+    }
+    
+    if (error.message?.includes('Caller is not authorized')) {
+      return new Error('This wallet is not authorized to mint tokens. Please contact the contract administrator.');
     }
     
     if (error.message?.includes('insufficient balance')) {
       return new Error('Insufficient balance to perform this transaction');
-    }
-    
-    if (error.message?.includes('unauthorized') || error.message?.includes('caller is not the owner')) {
-      return new Error('Unauthorized to mint tokens - check contract permissions');
-    }
-    
-    if (error.message?.includes('invalid recipient')) {
-      return new Error('Invalid recipient address provided');
     }
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {

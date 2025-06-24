@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Coins, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, Coins, AlertCircle, CheckCircle, Info } from "lucide-react";
 import { formatAddress } from "@/utils/walletUtils";
 
 const IssueTokensForm = () => {
@@ -72,7 +72,14 @@ const IssueTokensForm = () => {
     }
 
     try {
-      console.log(`🚀 Form: Submitting token issuance for ${amount} CAT to ${recipient}`);
+      console.log(`🚀 Form: Starting two-step token issuance for ${amount} CAT to ${recipient}`);
+      
+      // Show info toast about the two-step process
+      toast({
+        title: "Starting Token Issuance",
+        description: "Processing authorization and minting in two steps...",
+        variant: "default"
+      });
       
       await issueTokens(recipient, amount);
       
@@ -95,8 +102,8 @@ const IssueTokensForm = () => {
       
       if (error.message?.includes('User rejected') || error.message?.includes('user rejected')) {
         errorMessage = "Transaction was rejected by user.";
-      } else if (error.message?.includes('unauthorized') || error.message?.includes('caller is not the owner')) {
-        errorMessage = "You don't have permission to mint tokens with this contract.";
+      } else if (error.message?.includes('not authorized') || error.message?.includes('Caller is not authorized')) {
+        errorMessage = "Your wallet is not authorized to mint tokens. Please contact the administrator.";
       } else if (error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
         errorMessage = "Network error. Please check your connection and try again.";
       } else if (error.message?.includes('insufficient')) {
@@ -143,9 +150,17 @@ const IssueTokensForm = () => {
           )}
         </CardTitle>
         {isConnected && walletAddress && (
-          <p className="text-xs text-gray-600">
-            Issuing from: {formatAddress(walletAddress)}
-          </p>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-600">
+              Issuing from: {formatAddress(walletAddress)}
+            </p>
+            <div className="flex items-center space-x-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+              <Info className="w-4 h-4 text-blue-600" />
+              <p className="text-xs text-blue-700">
+                Uses two-step process: bank authorization + token minting
+              </p>
+            </div>
+          </div>
         )}
       </CardHeader>
       <CardContent>
@@ -228,7 +243,7 @@ const IssueTokensForm = () => {
             {isIssuing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Issuing Tokens...
+                Processing Authorization & Minting...
               </>
             ) : (
               <>

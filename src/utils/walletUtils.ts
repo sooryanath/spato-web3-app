@@ -23,10 +23,22 @@ export const SUPPORTED_WALLETS: WalletInfo[] = [
   }
 ];
 
-// Updated Cairo ERC20 Contract ABI with proper function signatures
+// Updated ABI based on the actual contract functions
 export const CAT_TOKEN_ABI = [
   {
-    "name": "mint",
+    "name": "add_bank",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "bank_address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ],
+    "outputs": [],
+    "state_mutability": "external"
+  },
+  {
+    "name": "mint_to_anchor",
     "type": "function",
     "inputs": [
       {
@@ -39,26 +51,6 @@ export const CAT_TOKEN_ABI = [
       }
     ],
     "outputs": [],
-    "state_mutability": "external"
-  },
-  {
-    "name": "transfer",
-    "type": "function", 
-    "inputs": [
-      {
-        "name": "recipient",
-        "type": "core::starknet::contract_address::ContractAddress"
-      },
-      {
-        "name": "amount",
-        "type": "core::integer::u256"
-      }
-    ],
-    "outputs": [
-      {
-        "type": "core::bool"
-      }
-    ],
     "state_mutability": "external"
   },
   {
@@ -248,16 +240,16 @@ export const validateContractABI = async (contractAddress: string, abi: any[], p
     
     const contract = new Contract(abi, contractAddress, provider);
     
-    // Test basic contract functions to ensure ABI compatibility
-    const testFunctions = ['balanceOf', 'balance_of', 'totalSupply', 'total_supply'];
+    // Test the specific functions that should exist in the contract
+    const testFunctions = ['add_bank', 'mint_to_anchor', 'balanceOf', 'balance_of'];
     
     for (const functionName of testFunctions) {
       try {
         const hasFunction = contract[functionName] !== undefined;
         console.log(`📋 Function ${functionName}: ${hasFunction ? '✅' : '❌'}`);
         
-        if (hasFunction) {
-          console.log(`✅ Contract has ${functionName} function - ABI appears valid`);
+        if (hasFunction && (functionName === 'add_bank' || functionName === 'mint_to_anchor')) {
+          console.log(`✅ Contract has ${functionName} function - ABI appears valid for CAT contract`);
           return true;
         }
       } catch (error) {
@@ -265,7 +257,7 @@ export const validateContractABI = async (contractAddress: string, abi: any[], p
       }
     }
     
-    console.warn('⚠️ No compatible functions found in contract');
+    console.warn('⚠️ No CAT-specific functions found in contract');
     return false;
   } catch (error) {
     console.error('❌ Error validating contract ABI:', error);

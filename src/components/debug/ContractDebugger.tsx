@@ -45,8 +45,11 @@ const ContractDebugger = () => {
         });
       }
       
+      // Fix the class_hash access issue
+      const classHash = (contractClass as any).class_hash || 'Unknown';
+      
       setContractInfo({
-        classHash: contractClass.class_hash || 'Unknown',
+        classHash,
         availableFunctions,
         abiValid: isValidABI
       });

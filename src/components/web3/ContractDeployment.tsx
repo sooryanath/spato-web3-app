@@ -51,7 +51,7 @@ const ContractDeployment = () => {
     setIsDeploying(true);
     try {
       const deployer = await ContractDeployer.create(account);
-      const result = await deployer.deployCATE Token(config);
+      const result = await deployer.deployCATToken(config);
       
       setDeploymentResult(result);
       toast({

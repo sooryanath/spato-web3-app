@@ -1,4 +1,3 @@
-
 import { Account, Contract, json, RpcProvider } from 'starknet';
 import { createProviderWithFailover } from './walletUtils';
 
@@ -32,7 +31,7 @@ export class ContractDeployer {
     return new ContractDeployer(account, provider);
   }
 
-  async deployCATE Token(config: DeploymentConfig): Promise<DeploymentResult> {
+  async deployCATToken(config: DeploymentConfig): Promise<DeploymentResult> {
     try {
       console.log('🚀 Deploying CAT Token with config:', config);
 

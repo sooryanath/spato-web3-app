@@ -45,8 +45,10 @@ export class TokenService {
       const enhancedProvider = await createProviderWithFailover();
       return new TokenService(account, enhancedProvider);
     } catch (error) {
-      console.error('❌ Failed to create enhanced provider, using account provider:', error);
-      return new TokenService(account, account.provider);
+      console.error('❌ Failed to create enhanced provider, using fallback:', error);
+      // Create a fallback provider instead of trying to access account.provider
+      const fallbackProvider = await createProviderWithFailover();
+      return new TokenService(account, fallbackProvider);
     }
   }
 

@@ -1,5 +1,5 @@
-
 import { getStarknet } from 'get-starknet-core';
+import { RpcProvider } from 'starknet';
 
 export interface WalletInfo {
   id: string;
@@ -131,26 +131,52 @@ const getContractConfig = () => {
 // Contract configuration - using function to support environment-specific config
 export const CONTRACT_CONFIG = getContractConfig();
 
-// STRK Token configuration (official StarkNet token)
+// STRK Token configuration (official StarkNet token) - Updated address
 export const STRK_TOKEN_CONFIG = {
-  address: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d', // Official STRK token address
+  address: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d', // Correct STRK token address for Sepolia
   abi: CAT_TOKEN_ABI, // Same ERC20 ABI
   name: 'StarkNet Token',
   symbol: 'STRK',
   decimals: 18
 };
 
-// RPC Endpoints with fallbacks
+// Enhanced RPC Endpoints with better failover support
 export const RPC_ENDPOINTS = {
   mainnet: [
     'https://starknet-mainnet.public.blastapi.io',
-    'https://free-rpc.nethermind.io/mainnet-juno/'
+    'https://free-rpc.nethermind.io/mainnet-juno/',
+    'https://starknet-mainnet.reddio.com'
   ],
   sepolia: [
     'https://starknet-sepolia.public.blastapi.io',
     'https://free-rpc.nethermind.io/sepolia-juno/',
-    'https://rpc.nethermind.io/sepolia-juno'
+    'https://rpc.nethermind.io/sepolia-juno',
+    'https://starknet-sepolia.reddio.com'
   ]
+};
+
+// Create provider with failover support
+export const createProviderWithFailover = async (network: 'mainnet' | 'sepolia' = 'sepolia'): Promise<RpcProvider> => {
+  const endpoints = RPC_ENDPOINTS[network];
+  
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`🔗 Attempting to connect to RPC: ${endpoint}`);
+      const provider = new RpcProvider({ nodeUrl: endpoint });
+      
+      // Test the connection
+      await provider.getChainId();
+      console.log(`✅ Successfully connected to RPC: ${endpoint}`);
+      return provider;
+    } catch (error) {
+      console.warn(`⚠️ Failed to connect to RPC ${endpoint}:`, error);
+      continue;
+    }
+  }
+  
+  // If all endpoints fail, use the first one as fallback
+  console.warn('⚠️ All RPC endpoints failed, using fallback');
+  return new RpcProvider({ nodeUrl: endpoints[0] });
 };
 
 export const detectWallets = async (): Promise<WalletInfo[]> => {
@@ -189,12 +215,18 @@ export const connectToWallet = async (walletId: string) => {
       throw new Error('Failed to connect to wallet');
     }
 
+    // Create a more reliable provider
+    const enhancedProvider = await createProviderWithFailover();
+    
     console.log('✅ Wallet connected successfully:', {
       address: walletInstance.account.address,
       chainId: walletInstance.provider?.chainId
     });
 
-    return walletInstance;
+    return {
+      ...walletInstance,
+      provider: enhancedProvider // Use our enhanced provider
+    };
   } catch (error) {
     console.error('❌ Error connecting to wallet:', error);
     throw error;
@@ -281,4 +313,3 @@ export const formatNumberWithCommas = (num: string): string => {
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return parts.join('.');
 };
-

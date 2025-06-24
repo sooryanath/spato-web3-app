@@ -61,7 +61,8 @@ export const useWalletConnection = () => {
       }
 
       if (walletInstance?.account) {
-        const service = createTokenService(walletInstance.account, walletInstance.provider);
+        // Use the enhanced token service creation
+        const service = await createTokenService(walletInstance.account, walletInstance.provider);
         
         setWalletState({
           account: walletInstance.account,

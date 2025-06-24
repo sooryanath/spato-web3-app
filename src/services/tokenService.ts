@@ -1,6 +1,5 @@
-
 import { Contract, AccountInterface, ProviderInterface } from 'starknet';
-import { CONTRACT_CONFIG, STRK_TOKEN_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus, formatNumberWithCommas } from '@/utils/walletUtils';
+import { CONTRACT_CONFIG, STRK_TOKEN_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus, formatNumberWithCommas, createProviderWithFailover } from '@/utils/walletUtils';
 
 export interface TokenMintResult {
   transactionHash: string;
@@ -12,6 +11,7 @@ export interface TokenMintResult {
 export interface TokenBalance {
   formatted: string;
   raw: { low: string; high: string };
+  isRealData: boolean; // New field to indicate if data is real or fallback
 }
 
 export interface MultiTokenBalance {
@@ -24,6 +24,7 @@ export class TokenService {
   private strkContract: Contract;
   private account: AccountInterface;
   private provider: ProviderInterface;
+  private isUsingFallbackProvider: boolean = false;
 
   constructor(account: AccountInterface, provider: ProviderInterface) {
     this.account = account;
@@ -36,6 +37,17 @@ export class TokenService {
       strkAddress: STRK_TOKEN_CONFIG.address,
       accountAddress: account.address
     });
+  }
+
+  // Enhanced initialization with provider failover
+  static async createWithFailover(account: AccountInterface): Promise<TokenService> {
+    try {
+      const enhancedProvider = await createProviderWithFailover();
+      return new TokenService(account, enhancedProvider);
+    } catch (error) {
+      console.error('❌ Failed to create enhanced provider, using account provider:', error);
+      return new TokenService(account, account.provider);
+    }
   }
 
   async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
@@ -68,7 +80,7 @@ export class TokenService {
   }
 
   async getBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 3;
+    const maxRetries = 2; // Reduced retries for faster response
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -89,42 +101,39 @@ export class TokenService {
         
         return {
           formatted: formattedWithCommas,
-          raw: {
-            low: balance.low.toString(),
-            high: balance.high.toString()
-          }
+          raw: { low: balance.low.toString(), high: balance.high.toString() },
+          isRealData: true
         };
       } catch (error) {
         retries++;
         console.error(`❌ Error getting CAT balance (attempt ${retries}):`, error);
         
         if (retries >= maxRetries) {
-          // Return mock data for development or zero for production
           const fallbackBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
           console.log(`🔄 Using fallback CAT balance: ${fallbackBalance}`);
           
           return {
             formatted: fallbackBalance,
-            raw: { low: '0', high: '0' }
+            raw: { low: '0', high: '0' },
+            isRealData: false
           };
         }
         
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
-    // This should never be reached, but TypeScript requires it
     throw new Error('Failed to get CAT balance after all retries');
   }
 
   async getStrkBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 3;
+    const maxRetries = 2;
     let retries = 0;
     
     while (retries < maxRetries) {
       try {
         console.log(`💎 Fetching STRK balance for ${address} (attempt ${retries + 1}/${maxRetries})`);
+        console.log(`🔗 Using STRK contract address: ${STRK_TOKEN_CONFIG.address}`);
         
         const balance = await this.strkContract.balance_of(address);
         
@@ -140,32 +149,28 @@ export class TokenService {
         
         return {
           formatted: formattedWithCommas,
-          raw: {
-            low: balance.low.toString(),
-            high: balance.high.toString()
-          }
+          raw: { low: balance.low.toString(), high: balance.high.toString() },
+          isRealData: true
         };
       } catch (error) {
         retries++;
         console.error(`❌ Error getting STRK balance (attempt ${retries}):`, error);
         
         if (retries >= maxRetries) {
-          // Return mock data for development or zero for production  
           const fallbackBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
           console.log(`🔄 Using fallback STRK balance: ${fallbackBalance}`);
           
           return {
             formatted: fallbackBalance,
-            raw: { low: '0', high: '0' }
+            raw: { low: '0', high: '0' },
+            isRealData: false
           };
         }
         
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     
-    // This should never be reached, but TypeScript requires it
     throw new Error('Failed to get STRK balance after all retries');
   }
 
@@ -181,15 +186,15 @@ export class TokenService {
 
       const catResult = catBalance.status === 'fulfilled' 
         ? catBalance.value 
-        : { formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', raw: { low: '0', high: '0' } };
+        : { formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', raw: { low: '0', high: '0' }, isRealData: false };
         
       const strkResult = strkBalance.status === 'fulfilled' 
         ? strkBalance.value 
-        : { formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', raw: { low: '0', high: '0' } };
+        : { formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', raw: { low: '0', high: '0' }, isRealData: false };
 
       console.log('✅ All balances retrieved:', {
-        CAT: catResult.formatted,
-        STRK: strkResult.formatted
+        CAT: `${catResult.formatted} (${catResult.isRealData ? 'real' : 'fallback'})`,
+        STRK: `${strkResult.formatted} (${strkResult.isRealData ? 'real' : 'fallback'})`
       });
 
       return {
@@ -203,11 +208,13 @@ export class TokenService {
       const fallbackBalances = {
         cat: { 
           formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', 
-          raw: { low: '0', high: '0' } 
+          raw: { low: '0', high: '0' },
+          isRealData: false
         },
         strk: { 
           formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', 
-          raw: { low: '0', high: '0' } 
+          raw: { low: '0', high: '0' },
+          isRealData: false
         }
       };
       
@@ -237,7 +244,8 @@ export class TokenService {
         raw: {
           low: supply.low.toString(),
           high: supply.high.toString()
-        }
+        },
+        isRealData: true
       };
     } catch (error) {
       console.error('❌ Error getting total supply:', error);
@@ -285,8 +293,12 @@ export class TokenService {
   }
 }
 
-export const createTokenService = (account: AccountInterface, provider: ProviderInterface): TokenService => {
-  console.log('🏭 Creating TokenService instance');
-  return new TokenService(account, provider);
+export const createTokenService = async (account: AccountInterface, provider?: ProviderInterface): Promise<TokenService> => {
+  console.log('🏭 Creating TokenService instance with enhanced provider');
+  
+  if (provider) {
+    return new TokenService(account, provider);
+  }
+  
+  return await TokenService.createWithFailover(account);
 };
-

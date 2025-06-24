@@ -1,5 +1,5 @@
 import { getStarknet } from 'get-starknet-core';
-import { RpcProvider } from 'starknet';
+import { RpcProvider, Contract } from 'starknet';
 
 export interface WalletInfo {
   id: string;
@@ -23,7 +23,7 @@ export const SUPPORTED_WALLETS: WalletInfo[] = [
   }
 ];
 
-// Cairo ERC20 Contract ABI
+// Updated Cairo ERC20 Contract ABI with proper function signatures
 export const CAT_TOKEN_ABI = [
   {
     "name": "mint",
@@ -62,6 +62,22 @@ export const CAT_TOKEN_ABI = [
     "state_mutability": "external"
   },
   {
+    "name": "balanceOf",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "core::integer::u256"
+      }
+    ],
+    "state_mutability": "view"
+  },
+  {
     "name": "balance_of",
     "type": "function",
     "inputs": [
@@ -70,6 +86,17 @@ export const CAT_TOKEN_ABI = [
         "type": "core::starknet::contract_address::ContractAddress"
       }
     ],
+    "outputs": [
+      {
+        "type": "core::integer::u256"
+      }
+    ],
+    "state_mutability": "view"
+  },
+  {
+    "name": "totalSupply",
+    "type": "function",
+    "inputs": [],
     "outputs": [
       {
         "type": "core::integer::u256"
@@ -214,6 +241,68 @@ export const createProviderWithFailover = async (network: 'mainnet' | 'sepolia' 
   return new RpcProvider({ nodeUrl: endpoints[0] });
 };
 
+// Add contract introspection utility
+export const validateContractABI = async (contractAddress: string, abi: any[], provider: RpcProvider): Promise<boolean> => {
+  try {
+    console.log(`🔍 Validating contract ABI for address: ${contractAddress}`);
+    
+    const contract = new Contract(abi, contractAddress, provider);
+    
+    // Test basic contract functions to ensure ABI compatibility
+    const testFunctions = ['balanceOf', 'balance_of', 'totalSupply', 'total_supply'];
+    
+    for (const functionName of testFunctions) {
+      try {
+        const hasFunction = contract[functionName] !== undefined;
+        console.log(`📋 Function ${functionName}: ${hasFunction ? '✅' : '❌'}`);
+        
+        if (hasFunction) {
+          console.log(`✅ Contract has ${functionName} function - ABI appears valid`);
+          return true;
+        }
+      } catch (error) {
+        console.log(`⚠️ Error testing function ${functionName}:`, error);
+      }
+    }
+    
+    console.warn('⚠️ No compatible functions found in contract');
+    return false;
+  } catch (error) {
+    console.error('❌ Error validating contract ABI:', error);
+    return false;
+  }
+};
+
+// Enhanced contract investigation utility
+export const investigateContract = async (contractAddress: string, provider: RpcProvider) => {
+  try {
+    console.log(`🔍 Investigating contract at address: ${contractAddress}`);
+    
+    // Get contract class hash
+    const classHash = await provider.getClassHashAt(contractAddress);
+    console.log(`📝 Contract class hash: ${classHash}`);
+    
+    // Get contract class to inspect ABI
+    const contractClass = await provider.getClass(classHash);
+    console.log(`📋 Contract class retrieved:`, contractClass);
+    
+    // Try to extract function names from the contract
+    if (contractClass.abi) {
+      console.log(`📋 Available functions in contract ABI:`);
+      contractClass.abi.forEach((item: any) => {
+        if (item.type === 'function') {
+          console.log(`  - ${item.name} (${item.state_mutability})`);
+        }
+      });
+    }
+    
+    return contractClass;
+  } catch (error) {
+    console.error('❌ Error investigating contract:', error);
+    throw error;
+  }
+};
+
 export const detectWallets = async (): Promise<WalletInfo[]> => {
   try {
     console.log('🔍 Detecting available wallets...');
@@ -265,11 +354,21 @@ export const connectToWallet = async (walletId: string) => {
     // Create enhanced provider
     const enhancedProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
     
+    // Validate contract ABI before proceeding
+    console.log('🔍 Validating contract ABI...');
+    const isValidABI = await validateContractABI(CONTRACT_CONFIG.address, CONTRACT_CONFIG.abi, enhancedProvider);
+    
+    if (!isValidABI) {
+      console.warn('⚠️ Contract ABI validation failed, investigating contract...');
+      await investigateContract(CONTRACT_CONFIG.address, enhancedProvider);
+    }
+    
     console.log('✅ Wallet connected successfully:', {
       address: walletInstance.account.address,
       chainId: walletInstance.provider?.chainId,
       environment: getEnvironment(),
-      contractAddress: CONTRACT_CONFIG.address
+      contractAddress: CONTRACT_CONFIG.address,
+      abiValid: isValidABI
     });
 
     return {

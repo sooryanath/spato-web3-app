@@ -106,11 +106,39 @@ export class TokenService {
       const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
       console.log('🔢 Formatted amount for contract:', formattedAmount);
       
-      // Call mint function on contract
-      console.log('📞 Calling mint function on contract...');
-      const result = await this.catContract.mint(recipient, formattedAmount);
+      // Try different mint function names to handle ABI mismatches
+      const mintFunctions = ['mint', 'Mint', 'mint_tokens', 'mintTokens'];
+      let result;
+      let usedFunction = '';
       
-      console.log('✅ Mint transaction submitted:', result.transaction_hash);
+      for (const functionName of mintFunctions) {
+        try {
+          console.log(`📞 Attempting to call ${functionName} function...`);
+          
+          if (this.catContract[functionName]) {
+            result = await this.catContract[functionName](recipient, formattedAmount);
+            usedFunction = functionName;
+            console.log(`✅ Successfully called ${functionName} function`);
+            break;
+          } else {
+            console.log(`⚠️ Function ${functionName} not found in contract`);
+          }
+        } catch (error) {
+          console.error(`❌ Error calling ${functionName}:`, error);
+          
+          // If it's the last function to try, re-throw the error
+          if (functionName === mintFunctions[mintFunctions.length - 1]) {
+            throw error;
+          }
+          continue;
+        }
+      }
+      
+      if (!result) {
+        throw new Error('No valid mint function found in contract. Available functions may not match the ABI.');
+      }
+      
+      console.log(`✅ Mint transaction submitted using ${usedFunction}:`, result.transaction_hash);
       
       // Return initial result
       const mintResult: TokenMintResult = {
@@ -137,8 +165,33 @@ export class TokenService {
       try {
         console.log(`💰 Fetching CAT balance for ${address} (attempt ${retries + 1}/${maxRetries})`);
         
-        const balance = await this.catContract.balance_of(address);
-        console.log('🔍 Raw CAT balance response:', balance);
+        // Try different balance function names
+        const balanceFunctions = ['balance_of', 'balanceOf', 'getBalance', 'Balance'];
+        let balance;
+        let usedFunction = '';
+        
+        for (const functionName of balanceFunctions) {
+          try {
+            if (this.catContract[functionName]) {
+              console.log(`📞 Attempting to call ${functionName} function...`);
+              balance = await this.catContract[functionName](address);
+              usedFunction = functionName;
+              console.log(`✅ Successfully called ${functionName} function`);
+              break;
+            } else {
+              console.log(`⚠️ Function ${functionName} not found in contract`);
+            }
+          } catch (error) {
+            console.error(`❌ Error calling ${functionName}:`, error);
+            continue;
+          }
+        }
+        
+        if (!balance) {
+          throw new Error('No valid balance function found in contract');
+        }
+        
+        console.log(`🔍 Raw CAT balance response from ${usedFunction}:`, balance);
         
         const validatedBalance = this.validateContractResponse(balance, 'CAT');
         if (!validatedBalance) {
@@ -275,7 +328,31 @@ export class TokenService {
     try {
       console.log('📈 Fetching CAT total supply');
       
-      const supply = await this.catContract.total_supply();
+      // Try different total supply function names
+      const supplyFunctions = ['total_supply', 'totalSupply', 'getTotalSupply', 'TotalSupply'];
+      let supply;
+      let usedFunction = '';
+      
+      for (const functionName of supplyFunctions) {
+        try {
+          if (this.catContract[functionName]) {
+            console.log(`📞 Attempting to call ${functionName} function...`);
+            supply = await this.catContract[functionName]();
+            usedFunction = functionName;
+            console.log(`✅ Successfully called ${functionName} function`);
+            break;
+          } else {
+            console.log(`⚠️ Function ${functionName} not found in contract`);
+          }
+        } catch (error) {
+          console.error(`❌ Error calling ${functionName}:`, error);
+          continue;
+        }
+      }
+      
+      if (!supply) {
+        throw new Error('No valid total supply function found in contract');
+      }
       
       const validatedSupply = this.validateContractResponse(supply, 'CAT Supply');
       if (!validatedSupply) {
@@ -290,7 +367,7 @@ export class TokenService {
       
       const formattedWithCommas = formatNumberWithCommas(formatted);
       
-      console.log(`✅ Total supply retrieved: ${formattedWithCommas}`);
+      console.log(`✅ Total supply retrieved using ${usedFunction}: ${formattedWithCommas}`);
       
       return {
         formatted: formattedWithCommas,
@@ -321,6 +398,14 @@ export class TokenService {
 
   private handleContractError(error: any): Error {
     console.error('🔧 Processing contract error:', error);
+    
+    if (error.message?.includes('ENTRYPOINT_NOT_FOUND')) {
+      return new Error('Contract function not found - the contract ABI may not match the deployed contract. Please check the contract implementation.');
+    }
+    
+    if (error.message?.includes('response.flat is not a function')) {
+      return new Error('Contract response format error - the ABI definition may not match the actual contract methods.');
+    }
     
     if (error.message?.includes('insufficient balance')) {
       return new Error('Insufficient balance to perform this transaction');

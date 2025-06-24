@@ -1,4 +1,5 @@
-import { Account, Contract, json, RpcProvider } from 'starknet';
+
+import { AccountInterface, Contract, json, RpcProvider } from 'starknet';
 import { createProviderWithFailover } from './walletUtils';
 
 // CAT Token Contract Class Hash - This would be obtained after declaring the contract
@@ -18,15 +19,15 @@ export interface DeploymentResult {
 }
 
 export class ContractDeployer {
-  private account: Account;
+  private account: AccountInterface;
   private provider: RpcProvider;
 
-  constructor(account: Account, provider: RpcProvider) {
+  constructor(account: AccountInterface, provider: RpcProvider) {
     this.account = account;
     this.provider = provider;
   }
 
-  static async create(account: Account): Promise<ContractDeployer> {
+  static async create(account: AccountInterface): Promise<ContractDeployer> {
     const provider = await createProviderWithFailover();
     return new ContractDeployer(account, provider);
   }
@@ -73,9 +74,9 @@ export class ContractDeployer {
     try {
       console.log('🔍 Verifying contract deployment:', contractAddress);
       
-      // Try to get contract code to verify deployment
-      const code = await this.provider.getCode(contractAddress);
-      const isDeployed = code && code.bytecode && code.bytecode.length > 0;
+      // Try to get contract class hash to verify deployment
+      const classHash = await this.provider.getClassHashAt(contractAddress);
+      const isDeployed = classHash && classHash !== '0x0';
       
       console.log(`✅ Contract verification result: ${isDeployed ? 'Deployed' : 'Not found'}`);
       return isDeployed;

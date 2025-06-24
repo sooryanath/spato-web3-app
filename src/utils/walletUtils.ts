@@ -112,14 +112,24 @@ export const CAT_TOKEN_ABI = [
   }
 ];
 
-// Contract configuration - update with actual deployed contract address
-export const CONTRACT_CONFIG = {
-  address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Placeholder - replace with actual deployed address
-  abi: CAT_TOKEN_ABI,
-  name: 'CAT Token',
-  symbol: 'CAT',
-  decimals: 18
+// Environment-specific contract configurations
+const getContractConfig = () => {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  return {
+    // Custom CAT token address - update with actual deployed contract address
+    address: isDevelopment 
+      ? '0x12345678901234567890123456789012345678901234567890123456789abcde' // Mock address for development
+      : '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Production address
+    abi: CAT_TOKEN_ABI,
+    name: 'CAT Token',
+    symbol: 'CAT',
+    decimals: 18
+  };
 };
+
+// Contract configuration - using function to support environment-specific config
+export const CONTRACT_CONFIG = getContractConfig();
 
 // STRK Token configuration (official StarkNet token)
 export const STRK_TOKEN_CONFIG = {
@@ -130,23 +140,41 @@ export const STRK_TOKEN_CONFIG = {
   decimals: 18
 };
 
+// RPC Endpoints with fallbacks
+export const RPC_ENDPOINTS = {
+  mainnet: [
+    'https://starknet-mainnet.public.blastapi.io',
+    'https://free-rpc.nethermind.io/mainnet-juno/'
+  ],
+  sepolia: [
+    'https://starknet-sepolia.public.blastapi.io',
+    'https://free-rpc.nethermind.io/sepolia-juno/',
+    'https://rpc.nethermind.io/sepolia-juno'
+  ]
+};
+
 export const detectWallets = async (): Promise<WalletInfo[]> => {
   try {
+    console.log('🔍 Detecting available wallets...');
     const starknet = getStarknet();
     const availableWallets = await starknet.getAvailableWallets();
     
-    return SUPPORTED_WALLETS.map(wallet => ({
+    const wallets = SUPPORTED_WALLETS.map(wallet => ({
       ...wallet,
       installed: availableWallets.some(w => w.id === wallet.id)
     }));
+    
+    console.log('✅ Wallets detected:', wallets);
+    return wallets;
   } catch (error) {
-    console.error('Error detecting wallets:', error);
+    console.error('❌ Error detecting wallets:', error);
     return SUPPORTED_WALLETS;
   }
 };
 
 export const connectToWallet = async (walletId: string) => {
   try {
+    console.log(`🔗 Connecting to wallet: ${walletId}`);
     const starknet = getStarknet();
     const availableWallets = await starknet.getAvailableWallets();
     
@@ -161,9 +189,14 @@ export const connectToWallet = async (walletId: string) => {
       throw new Error('Failed to connect to wallet');
     }
 
+    console.log('✅ Wallet connected successfully:', {
+      address: walletInstance.account.address,
+      chainId: walletInstance.provider?.chainId
+    });
+
     return walletInstance;
   } catch (error) {
-    console.error('Error connecting to wallet:', error);
+    console.error('❌ Error connecting to wallet:', error);
     throw error;
   }
 };
@@ -211,17 +244,41 @@ export const parseTokenAmount = (low: string, high: string, decimals: number = 1
   return trimmedFractional ? `${wholePart}.${trimmedFractional}` : wholePart.toString();
 };
 
-// Transaction status checker
-export const checkTransactionStatus = async (provider: any, txHash: string) => {
-  try {
-    const receipt = await provider.waitForTransaction(txHash);
-    return {
-      status: receipt.status || receipt.execution_status,
-      blockNumber: receipt.block_number,
-      blockHash: receipt.block_hash
-    };
-  } catch (error) {
-    console.error('Error checking transaction status:', error);
-    throw error;
+// Enhanced transaction status checker with retry logic
+export const checkTransactionStatus = async (provider: any, txHash: string, maxRetries: number = 3) => {
+  let retries = 0;
+  
+  while (retries < maxRetries) {
+    try {
+      console.log(`📊 Checking transaction status (attempt ${retries + 1}/${maxRetries}):`, txHash);
+      const receipt = await provider.waitForTransaction(txHash);
+      
+      const status = {
+        status: receipt.status || receipt.execution_status,
+        blockNumber: receipt.block_number,
+        blockHash: receipt.block_hash
+      };
+      
+      console.log('✅ Transaction status retrieved:', status);
+      return status;
+    } catch (error) {
+      retries++;
+      console.error(`❌ Error checking transaction status (attempt ${retries}):`, error);
+      
+      if (retries >= maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000 * retries));
+    }
   }
 };
+
+// Utility function to format numbers with commas
+export const formatNumberWithCommas = (num: string): string => {
+  const parts = num.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return parts.join('.');
+};
+

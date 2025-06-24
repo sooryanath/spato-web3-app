@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AccountInterface } from 'starknet';
 import { detectWallets, connectToWallet, WalletInfo } from '@/utils/walletUtils';
@@ -117,8 +118,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         setWalletAddress(walletInstance.account.address);
         setIsConnected(true);
         
-        // Create token service instance
-        const service = createTokenService(walletInstance.account);
+        // Create token service instance with both account and provider
+        const service = createTokenService(walletInstance.account, walletInstance.provider);
         setTokenService(service);
         
         // Get network info if available

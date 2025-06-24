@@ -1,5 +1,4 @@
-
-import { Contract, AccountInterface } from 'starknet';
+import { Contract, AccountInterface, ProviderInterface } from 'starknet';
 import { CONTRACT_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus } from '@/utils/walletUtils';
 
 export interface TokenMintResult {
@@ -17,9 +16,11 @@ export interface TokenBalance {
 export class TokenService {
   private contract: Contract;
   private account: AccountInterface;
+  private provider: ProviderInterface;
 
-  constructor(account: AccountInterface) {
+  constructor(account: AccountInterface, provider: ProviderInterface) {
     this.account = account;
+    this.provider = provider;
     this.contract = new Contract(CONTRACT_CONFIG.abi, CONTRACT_CONFIG.address, account);
   }
 
@@ -100,7 +101,7 @@ export class TokenService {
 
   private async monitorTransaction(txHash: string, result: TokenMintResult): Promise<void> {
     try {
-      const status = await checkTransactionStatus(this.account.provider, txHash);
+      const status = await checkTransactionStatus(this.provider, txHash);
       
       result.status = status.status === 'SUCCEEDED' ? 'confirmed' : 'failed';
       result.blockNumber = status.blockNumber;
@@ -131,6 +132,6 @@ export class TokenService {
   }
 }
 
-export const createTokenService = (account: AccountInterface): TokenService => {
-  return new TokenService(account);
+export const createTokenService = (account: AccountInterface, provider: ProviderInterface): TokenService => {
+  return new TokenService(account, provider);
 };

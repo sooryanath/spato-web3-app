@@ -1,7 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AccountInterface, Contract } from 'starknet';
+import { AccountInterface } from 'starknet';
 import { detectWallets, connectToWallet, WalletInfo } from '@/utils/walletUtils';
+import { TokenService, createTokenService, TokenMintResult } from '@/services/tokenService';
 
 interface Web3ContextType {
   account: AccountInterface | null;
@@ -12,9 +12,12 @@ interface Web3ContextType {
   availableWallets: WalletInfo[];
   connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => void;
-  issueTokens: (recipient: string, amount: string) => Promise<void>;
+  issueTokens: (recipient: string, amount: string) => Promise<TokenMintResult>;
   isIssuing: boolean;
   walletAddress: string;
+  tokenService: TokenService | null;
+  refreshBalance: () => Promise<void>;
+  lastMintResult: TokenMintResult | null;
 }
 
 const Web3Context = createContext<Web3ContextType | undefined>(undefined);
@@ -50,6 +53,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isIssuing, setIsIssuing] = useState(false);
   const [availableWallets, setAvailableWallets] = useState<WalletInfo[]>([]);
   const [walletAddress, setWalletAddress] = useState('');
+  const [tokenService, setTokenService] = useState<TokenService | null>(null);
+  const [lastMintResult, setLastMintResult] = useState<TokenMintResult | null>(null);
 
   useEffect(() => {
     const initializeWallets = async () => {
@@ -69,8 +74,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check if wallet is already connected on mount
     const checkExistingConnection = async () => {
       try {
-        // This would check for stored connection state
-        // For now, we'll skip auto-connection
         console.log('Checking for existing wallet connection...');
       } catch (error) {
         console.error('Error checking existing connection:', error);
@@ -80,16 +83,27 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     checkExistingConnection();
   }, []);
 
+  const refreshBalance = async () => {
+    if (!tokenService || !walletAddress) return;
+    
+    try {
+      const tokenBalance = await tokenService.getBalance(walletAddress);
+      setBalance(tokenBalance.formatted);
+      console.log('Token balance refreshed:', tokenBalance.formatted);
+    } catch (error) {
+      console.error('Error refreshing balance:', error);
+      // Keep existing balance on error
+    }
+  };
+
   const connectWallet = async (walletId?: string) => {
     setIsConnecting(true);
     try {
       let walletInstance;
       
       if (walletId) {
-        // Connect to specific wallet
         walletInstance = await connectToWallet(walletId);
       } else {
-        // Try to connect to any available wallet (fallback)
         const installedWallets = availableWallets.filter(w => w.installed);
         if (installedWallets.length > 0) {
           walletInstance = await connectToWallet(installedWallets[0].id);
@@ -103,13 +117,24 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         setWalletAddress(walletInstance.account.address);
         setIsConnected(true);
         
+        // Create token service instance
+        const service = createTokenService(walletInstance.account);
+        setTokenService(service);
+        
         // Get network info if available
         if (walletInstance.provider?.chainId) {
           setChainId(walletInstance.provider.chainId);
         }
         
-        // Mock balance - in real app, you'd fetch from blockchain
-        setBalance('1,250.50');
+        // Get actual token balance
+        try {
+          const tokenBalance = await service.getBalance(walletInstance.account.address);
+          setBalance(tokenBalance.formatted);
+          console.log('CAT Token balance:', tokenBalance.formatted);
+        } catch (error) {
+          console.error('Error fetching token balance:', error);
+          setBalance('0'); // Fallback to zero if balance fetch fails
+        }
         
         console.log('Wallet connected successfully:', {
           address: walletInstance.account.address,
@@ -141,30 +166,34 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       setBalance('0');
       setWalletAddress('');
       setChainId('');
+      setTokenService(null);
+      setLastMintResult(null);
       console.log('Wallet disconnected');
     } catch (error) {
       console.error('Error disconnecting wallet:', error);
     }
   };
 
-  const issueTokens = async (recipient: string, amount: string) => {
-    if (!isConnected || !account) {
-      throw new Error('Wallet not connected');
+  const issueTokens = async (recipient: string, amount: string): Promise<TokenMintResult> => {
+    if (!isConnected || !tokenService) {
+      throw new Error('Wallet not connected or token service unavailable');
     }
 
     setIsIssuing(true);
     try {
       console.log(`Issuing ${amount} CAT tokens to ${recipient}`);
       
-      // Simulate blockchain transaction delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const result = await tokenService.mintTokens(recipient, amount);
+      setLastMintResult(result);
       
-      // In a real implementation, you would:
-      // const contract = new Contract(ERC20_ABI, CONTRACT_ADDRESS, account);
-      // const result = await contract.mint(recipient, { low: amount, high: '0' });
-      // await account.waitForTransaction(result.transaction_hash);
+      // Refresh balance after successful mint (with delay to allow blockchain confirmation)
+      setTimeout(() => {
+        refreshBalance();
+      }, 5000);
       
-      console.log('Tokens issued successfully');
+      console.log('Tokens issued successfully:', result);
+      return result;
+      
     } catch (error) {
       console.error('Failed to issue tokens:', error);
       throw error;
@@ -184,7 +213,10 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     disconnectWallet,
     issueTokens,
     isIssuing,
-    walletAddress
+    walletAddress,
+    tokenService,
+    refreshBalance,
+    lastMintResult
   };
 
   return (

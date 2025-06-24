@@ -121,6 +121,15 @@ export const CONTRACT_CONFIG = {
   decimals: 18
 };
 
+// STRK Token configuration (official StarkNet token)
+export const STRK_TOKEN_CONFIG = {
+  address: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d', // Official STRK token address
+  abi: CAT_TOKEN_ABI, // Same ERC20 ABI
+  name: 'StarkNet Token',
+  symbol: 'STRK',
+  decimals: 18
+};
+
 export const detectWallets = async (): Promise<WalletInfo[]> => {
   try {
     const starknet = getStarknet();

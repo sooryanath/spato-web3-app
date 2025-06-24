@@ -1,14 +1,14 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AccountInterface } from 'starknet';
 import { detectWallets, connectToWallet, WalletInfo } from '@/utils/walletUtils';
-import { TokenService, createTokenService, TokenMintResult } from '@/services/tokenService';
+import { TokenService, createTokenService, TokenMintResult, MultiTokenBalance } from '@/services/tokenService';
 
 interface Web3ContextType {
   account: AccountInterface | null;
   isConnected: boolean;
   isConnecting: boolean;
   balance: string;
+  strkBalance: string;
   chainId: string;
   availableWallets: WalletInfo[];
   connectWallet: (walletId?: string) => Promise<void>;
@@ -50,6 +50,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [balance, setBalance] = useState('0');
+  const [strkBalance, setStrkBalance] = useState('0');
   const [chainId, setChainId] = useState('');
   const [isIssuing, setIsIssuing] = useState(false);
   const [availableWallets, setAvailableWallets] = useState<WalletInfo[]>([]);
@@ -88,12 +89,16 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!tokenService || !walletAddress) return;
     
     try {
-      const tokenBalance = await tokenService.getBalance(walletAddress);
-      setBalance(tokenBalance.formatted);
-      console.log('Token balance refreshed:', tokenBalance.formatted);
+      const balances = await tokenService.getAllBalances(walletAddress);
+      setBalance(balances.cat.formatted);
+      setStrkBalance(balances.strk.formatted);
+      console.log('Token balances refreshed:', {
+        CAT: balances.cat.formatted,
+        STRK: balances.strk.formatted
+      });
     } catch (error) {
-      console.error('Error refreshing balance:', error);
-      // Keep existing balance on error
+      console.error('Error refreshing balances:', error);
+      // Keep existing balances on error
     }
   };
 
@@ -127,14 +132,19 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
           setChainId(walletInstance.provider.chainId);
         }
         
-        // Get actual token balance
+        // Get both token balances
         try {
-          const tokenBalance = await service.getBalance(walletInstance.account.address);
-          setBalance(tokenBalance.formatted);
-          console.log('CAT Token balance:', tokenBalance.formatted);
+          const balances = await service.getAllBalances(walletInstance.account.address);
+          setBalance(balances.cat.formatted);
+          setStrkBalance(balances.strk.formatted);
+          console.log('Token balances loaded:', {
+            CAT: balances.cat.formatted,
+            STRK: balances.strk.formatted
+          });
         } catch (error) {
-          console.error('Error fetching token balance:', error);
-          setBalance('0'); // Fallback to zero if balance fetch fails
+          console.error('Error fetching token balances:', error);
+          setBalance('0');
+          setStrkBalance('0');
         }
         
         console.log('Wallet connected successfully:', {
@@ -149,6 +159,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       if (process.env.NODE_ENV === 'development') {
         setIsConnected(true);
         setBalance('1,250.50');
+        setStrkBalance('45.75');
         setWalletAddress('0x1234567890abcdef1234567890abcdef12345678');
         setChainId('0x534e5f474f45524c49'); // Goerli testnet
         console.log('Mock wallet connected for demo due to connection error');
@@ -165,6 +176,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       setAccount(null);
       setIsConnected(false);
       setBalance('0');
+      setStrkBalance('0');
       setWalletAddress('');
       setChainId('');
       setTokenService(null);
@@ -208,6 +220,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     isConnected,
     isConnecting,
     balance,
+    strkBalance,
     chainId,
     availableWallets,
     connectWallet,

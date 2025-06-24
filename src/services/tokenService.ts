@@ -1,6 +1,6 @@
 
 import { Contract, AccountInterface, ProviderInterface } from 'starknet';
-import { CONTRACT_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus } from '@/utils/walletUtils';
+import { CONTRACT_CONFIG, STRK_TOKEN_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus } from '@/utils/walletUtils';
 
 export interface TokenMintResult {
   transactionHash: string;
@@ -14,15 +14,22 @@ export interface TokenBalance {
   raw: { low: string; high: string };
 }
 
+export interface MultiTokenBalance {
+  cat: TokenBalance;
+  strk: TokenBalance;
+}
+
 export class TokenService {
-  private contract: Contract;
+  private catContract: Contract;
+  private strkContract: Contract;
   private account: AccountInterface;
   private provider: ProviderInterface;
 
   constructor(account: AccountInterface, provider: ProviderInterface) {
     this.account = account;
     this.provider = provider;
-    this.contract = new Contract(CONTRACT_CONFIG.abi, CONTRACT_CONFIG.address, account);
+    this.catContract = new Contract(CONTRACT_CONFIG.abi, CONTRACT_CONFIG.address, account);
+    this.strkContract = new Contract(STRK_TOKEN_CONFIG.abi, STRK_TOKEN_CONFIG.address, account);
   }
 
   async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
@@ -33,7 +40,7 @@ export class TokenService {
       const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
       
       // Call mint function
-      const result = await this.contract.mint(recipient, formattedAmount);
+      const result = await this.catContract.mint(recipient, formattedAmount);
       
       console.log('Mint transaction submitted:', result.transaction_hash);
       
@@ -56,7 +63,7 @@ export class TokenService {
 
   async getBalance(address: string): Promise<TokenBalance> {
     try {
-      const balance = await this.contract.balance_of(address);
+      const balance = await this.catContract.balance_of(address);
       
       const formatted = parseTokenAmount(
         balance.low.toString(), 
@@ -72,14 +79,62 @@ export class TokenService {
         }
       };
     } catch (error) {
-      console.error('Error getting balance:', error);
+      console.error('Error getting CAT balance:', error);
       throw this.handleContractError(error);
+    }
+  }
+
+  async getStrkBalance(address: string): Promise<TokenBalance> {
+    try {
+      const balance = await this.strkContract.balance_of(address);
+      
+      const formatted = parseTokenAmount(
+        balance.low.toString(), 
+        balance.high.toString(), 
+        STRK_TOKEN_CONFIG.decimals
+      );
+      
+      return {
+        formatted,
+        raw: {
+          low: balance.low.toString(),
+          high: balance.high.toString()
+        }
+      };
+    } catch (error) {
+      console.error('Error getting STRK balance:', error);
+      // Return zero balance if STRK balance fetch fails (common for test wallets)
+      return {
+        formatted: '0',
+        raw: { low: '0', high: '0' }
+      };
+    }
+  }
+
+  async getAllBalances(address: string): Promise<MultiTokenBalance> {
+    try {
+      const [catBalance, strkBalance] = await Promise.all([
+        this.getBalance(address),
+        this.getStrkBalance(address)
+      ]);
+
+      return {
+        cat: catBalance,
+        strk: strkBalance
+      };
+    } catch (error) {
+      console.error('Error getting all balances:', error);
+      // Return default balances on error
+      return {
+        cat: { formatted: '0', raw: { low: '0', high: '0' } },
+        strk: { formatted: '0', raw: { low: '0', high: '0' } }
+      };
     }
   }
 
   async getTotalSupply(): Promise<TokenBalance> {
     try {
-      const supply = await this.contract.total_supply();
+      const supply = await this.catContract.total_supply();
       
       const formatted = parseTokenAmount(
         supply.low.toString(), 

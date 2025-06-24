@@ -15,6 +15,7 @@ const WalletConnection = () => {
     isConnected, 
     isConnecting, 
     balance, 
+    strkBalance,
     chainId,
     walletAddress,
     availableWallets,
@@ -92,9 +93,16 @@ const WalletConnection = () => {
                 </div>
               </div>
               
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-1">Balance:</p>
-                <p className="text-lg font-semibold text-green-700">{balance} ETH</p>
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">CAT Token Balance:</p>
+                  <p className="text-lg font-semibold text-green-700">{balance} CAT</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">STRK Token Balance:</p>
+                  <p className="text-lg font-semibold text-blue-700">{strkBalance} STRK</p>
+                </div>
               </div>
               
               {chainId && (

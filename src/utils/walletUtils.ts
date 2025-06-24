@@ -1,4 +1,3 @@
-
 import { getStarknet } from 'get-starknet-core';
 import { RpcProvider } from 'starknet';
 
@@ -250,10 +249,8 @@ export const connectToWallet = async (walletId: string) => {
 
     console.log(`🎯 Found target wallet:`, targetWallet);
     
-    // Enable the wallet with proper configuration
-    const walletInstance = await starknet.enable(targetWallet, {
-      showModal: false // Prevent multiple modals
-    });
+    // Enable the wallet without the invalid showModal property
+    const walletInstance = await starknet.enable(targetWallet);
     
     console.log(`🔄 Wallet instance created:`, {
       account: !!walletInstance?.account,

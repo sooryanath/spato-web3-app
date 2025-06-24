@@ -1,4 +1,3 @@
-
 import { getStarknet } from 'get-starknet-core';
 import { RpcProvider } from 'starknet';
 
@@ -119,9 +118,10 @@ const getContractConfig = () => {
   
   return {
     // Custom CAT token address - update with actual deployed contract address
+    // TODO: Replace with your deployed CAT token contract address
     address: isDevelopment 
       ? '0x12345678901234567890123456789012345678901234567890123456789abcde' // Mock address for development
-      : '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Production address
+      : '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Production address - REPLACE WITH YOUR DEPLOYED CONTRACT
     abi: CAT_TOKEN_ABI,
     name: 'CAT Token',
     symbol: 'CAT',
@@ -132,7 +132,7 @@ const getContractConfig = () => {
 // Contract configuration - using function to support environment-specific config
 export const CONTRACT_CONFIG = getContractConfig();
 
-// STRK Token configuration (official StarkNet token) - Updated address
+// STRK Token configuration (official StarkNet token) - Updated address for Sepolia testnet
 export const STRK_TOKEN_CONFIG = {
   address: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d', // Correct STRK token address for Sepolia
   abi: CAT_TOKEN_ABI, // Same ERC20 ABI
@@ -361,4 +361,39 @@ export const formatNumberWithCommas = (num: string): string => {
     console.error('❌ Error formatting number with commas:', error);
     return num; // Return original if formatting fails
   }
+};
+
+// Enhanced contract configuration update utility
+export const updateContractAddress = (newAddress: string) => {
+  console.log(`🔧 Updating contract address to: ${newAddress}`);
+  // In a production app, this would update environment variables or configuration
+  // For now, it logs the instruction for manual update
+  console.log('⚠️ Manual Update Required: Update CONTRACT_CONFIG.address in walletUtils.ts');
+  return newAddress;
+};
+
+// Contract deployment validation
+export const validateContractAddress = (address: string): boolean => {
+  if (!address || !address.startsWith('0x')) return false;
+  if (address.length < 10) return false; // Minimum reasonable length
+  return true;
+};
+
+// Development mode helpers
+export const getDeploymentInstructions = () => {
+  return {
+    steps: [
+      "1. Connect your StarkNet wallet (Argent X or Braavos)",
+      "2. Ensure you have enough ETH for deployment fees",
+      "3. Use the Contract Deployment component to deploy your CAT token",
+      "4. Copy the deployed contract address",
+      "5. Update CONTRACT_CONFIG.address in src/utils/walletUtils.ts",
+      "6. Restart the application to use the new contract"
+    ],
+    contractInfo: {
+      currentAddress: CONTRACT_CONFIG.address,
+      isTestAddress: CONTRACT_CONFIG.address.includes('1234567890abcdef'),
+      network: process.env.NODE_ENV === 'development' ? 'Development' : 'Production'
+    }
+  };
 };

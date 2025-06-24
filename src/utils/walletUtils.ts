@@ -1,4 +1,3 @@
-
 import { getStarknet } from 'get-starknet-core';
 import { RpcProvider } from 'starknet';
 
@@ -113,20 +112,65 @@ export const CAT_TOKEN_ABI = [
   }
 ];
 
+// Environment detection utility
+const getEnvironment = (): 'development' | 'testnet' | 'mainnet' => {
+  // Check if we're in development mode
+  if (process.env.NODE_ENV === 'development') {
+    return 'development';
+  }
+  
+  // For production builds, we'll default to testnet since that's what you're using
+  // You can modify this logic based on your deployment strategy
+  return 'testnet';
+};
+
 // Environment-specific contract configurations
 const getContractConfig = () => {
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const environment = getEnvironment();
   
-  return {
-    // Custom CAT token address - update with actual deployed contract address
-    address: isDevelopment 
-      ? '0x12345678901234567890123456789012345678901234567890123456789abcde' // Mock address for development
-      : '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Production address
-    abi: CAT_TOKEN_ABI,
-    name: 'CAT Token',
-    symbol: 'CAT',
-    decimals: 18
-  };
+  console.log(`🌍 Current environment: ${environment}`);
+  
+  switch (environment) {
+    case 'development':
+      return {
+        address: '0x12345678901234567890123456789012345678901234567890123456789abcde', // Mock address for development
+        abi: CAT_TOKEN_ABI,
+        name: 'CAT Token (Dev)',
+        symbol: 'CAT',
+        decimals: 18,
+        network: 'sepolia' as const
+      };
+    
+    case 'testnet':
+      return {
+        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e', // Your real testnet contract
+        abi: CAT_TOKEN_ABI,
+        name: 'CAT Token',
+        symbol: 'CAT',
+        decimals: 18,
+        network: 'sepolia' as const
+      };
+    
+    case 'mainnet':
+      return {
+        address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Placeholder for mainnet
+        abi: CAT_TOKEN_ABI,
+        name: 'CAT Token',
+        symbol: 'CAT',
+        decimals: 18,
+        network: 'mainnet' as const
+      };
+    
+    default:
+      return {
+        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e', // Default to testnet
+        abi: CAT_TOKEN_ABI,
+        name: 'CAT Token',
+        symbol: 'CAT',
+        decimals: 18,
+        network: 'sepolia' as const
+      };
+  }
 };
 
 // Contract configuration - using function to support environment-specific config
@@ -216,12 +260,14 @@ export const connectToWallet = async (walletId: string) => {
       throw new Error('Failed to connect to wallet');
     }
 
-    // Create a more reliable provider
-    const enhancedProvider = await createProviderWithFailover();
+    // Create a provider with the correct network based on environment
+    const enhancedProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
     
     console.log('✅ Wallet connected successfully:', {
       address: walletInstance.account.address,
-      chainId: walletInstance.provider?.chainId
+      chainId: walletInstance.provider?.chainId,
+      environment: getEnvironment(),
+      contractAddress: CONTRACT_CONFIG.address
     });
 
     return {

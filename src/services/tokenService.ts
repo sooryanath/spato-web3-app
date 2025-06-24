@@ -33,21 +33,23 @@ export class TokenService {
     this.strkContract = new Contract(STRK_TOKEN_CONFIG.abi, STRK_TOKEN_CONFIG.address, account);
     
     console.log('🔧 TokenService initialized:', {
+      environment: process.env.NODE_ENV,
       catAddress: CONTRACT_CONFIG.address,
       strkAddress: STRK_TOKEN_CONFIG.address,
-      accountAddress: account.address
+      accountAddress: account.address,
+      network: CONTRACT_CONFIG.network
     });
   }
 
   // Enhanced initialization with provider failover
   static async createWithFailover(account: AccountInterface): Promise<TokenService> {
     try {
-      const enhancedProvider = await createProviderWithFailover();
+      const enhancedProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
       return new TokenService(account, enhancedProvider);
     } catch (error) {
       console.error('❌ Failed to create enhanced provider, using fallback:', error);
       // Create a fallback provider instead of trying to access account.provider
-      const fallbackProvider = await createProviderWithFailover();
+      const fallbackProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
       return new TokenService(account, fallbackProvider);
     }
   }
@@ -106,15 +108,32 @@ export class TokenService {
 
   async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
     try {
-      console.log(`🪙 Minting ${amount} CAT tokens to ${recipient}`);
+      console.log(`🪙 Minting ${amount} CAT tokens to ${recipient} using contract ${CONTRACT_CONFIG.address}`);
+      
+      // Check if we're in development mode and using mock contract
+      if (process.env.NODE_ENV === 'development' && CONTRACT_CONFIG.address.includes('12345678901234567890')) {
+        console.log('🔧 Development mode detected with mock contract - simulating mint operation');
+        
+        // Return a simulated successful mint for development
+        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
+        
+        const mintResult: TokenMintResult = {
+          transactionHash: mockTxHash,
+          status: 'confirmed'
+        };
+        
+        console.log('✅ Mock mint transaction completed:', mockTxHash);
+        return mintResult;
+      }
       
       // Format amount for Cairo u256
       const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
+      console.log('🔢 Formatted amount for contract:', formattedAmount);
       
-      // Call mint function
+      // Call mint function on real contract
       const result = await this.catContract.mint(recipient, formattedAmount);
       
-      console.log('✅ Mint transaction submitted:', result.transaction_hash);
+      console.log('✅ Real mint transaction submitted:', result.transaction_hash);
       
       // Return initial result
       const mintResult: TokenMintResult = {

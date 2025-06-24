@@ -27,7 +27,6 @@ const IssueTokensForm = () => {
 
   const validateStarkNetAddress = (address: string): boolean => {
     if (!address) return false;
-    // StarkNet addresses are typically 64 characters long and start with 0x
     const starknetRegex = /^0x[0-9a-fA-F]{1,64}$/;
     return starknetRegex.test(address);
   };
@@ -73,6 +72,8 @@ const IssueTokensForm = () => {
     }
 
     try {
+      console.log(`🚀 Form: Submitting token issuance for ${amount} CAT to ${recipient}`);
+      
       await issueTokens(recipient, amount);
       
       const selectedCompany = companies.find(c => c.id === company);
@@ -86,10 +87,27 @@ const IssueTokensForm = () => {
       setAmount("");
       setCompany("");
       setRecipient("");
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Form: Token issuance failed:', error);
+      
+      // Show specific error message based on error type
+      let errorMessage = "Failed to issue tokens. Please try again.";
+      
+      if (error.message?.includes('User rejected') || error.message?.includes('user rejected')) {
+        errorMessage = "Transaction was rejected by user.";
+      } else if (error.message?.includes('unauthorized') || error.message?.includes('caller is not the owner')) {
+        errorMessage = "You don't have permission to mint tokens with this contract.";
+      } else if (error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.message?.includes('insufficient')) {
+        errorMessage = "Insufficient balance to perform this transaction.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Token Issuance Failed",
-        description: "Failed to issue tokens. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -189,7 +207,7 @@ const IssueTokensForm = () => {
             <Input
               id="amount"
               type="number"
-              placeholder="Enter amount (e.g., 1000000)"
+              placeholder="Enter amount (e.g., 1000)"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               min="0"
@@ -197,7 +215,7 @@ const IssueTokensForm = () => {
             />
             {amount && (
               <p className="text-xs text-gray-600">
-                ≈ ₹{(parseFloat(amount) * 1.6).toLocaleString('en-IN')} CAT tokens
+                Issuing {amount} CAT tokens
               </p>
             )}
           </div>

@@ -22,87 +22,77 @@ export const useWalletConnection = () => {
       try {
         const wallets = await detectWallets();
         setAvailableWallets(wallets);
-        console.log('Available wallets detected:', wallets);
+        console.log('✅ Available wallets detected:', wallets);
       } catch (error) {
-        console.error('Error initializing wallets:', error);
+        console.error('❌ Error initializing wallets:', error);
       }
     };
 
     initializeWallets();
   }, []);
 
-  useEffect(() => {
-    const checkExistingConnection = async () => {
-      try {
-        console.log('Checking for existing wallet connection...');
-      } catch (error) {
-        console.error('Error checking existing connection:', error);
-      }
-    };
-
-    checkExistingConnection();
-  }, []);
-
   const connectWallet = async (walletId?: string) => {
+    console.log(`🚀 Starting wallet connection process for: ${walletId || 'auto-detect'}`);
     setWalletState(prev => ({ ...prev, isConnecting: true }));
     
     try {
       let walletInstance;
       
       if (walletId) {
+        console.log(`🎯 Connecting to specific wallet: ${walletId}`);
         walletInstance = await connectToWallet(walletId);
       } else {
         const installedWallets = availableWallets.filter(w => w.installed);
+        console.log(`🔍 Auto-detecting from installed wallets:`, installedWallets);
+        
         if (installedWallets.length > 0) {
           walletInstance = await connectToWallet(installedWallets[0].id);
         } else {
-          throw new Error('No wallets available');
+          throw new Error('No wallets available for connection');
         }
       }
 
-      if (walletInstance?.account) {
-        // Use the enhanced token service creation
-        const service = await createTokenService(walletInstance.account, walletInstance.provider);
-        
-        setWalletState({
-          account: walletInstance.account,
-          walletAddress: walletInstance.account.address,
-          isConnected: true,
-          isConnecting: false,
-          tokenService: service,
-          chainId: walletInstance.provider?.chainId || ''
-        });
-        
-        console.log('Wallet connected successfully:', {
-          address: walletInstance.account.address,
-          chainId: walletInstance.provider?.chainId
-        });
+      if (!walletInstance?.account) {
+        throw new Error('Failed to get wallet account after connection');
+      }
 
-        return service;
-      }
-    } catch (error) {
-      console.error('Failed to connect wallet:', error);
+      console.log(`🔧 Creating token service for wallet: ${walletInstance.account.address}`);
       
-      // For demo purposes, create a mock connection if real connection fails
-      if (process.env.NODE_ENV === 'development') {
-        setWalletState({
-          account: null,
-          isConnected: true,
-          isConnecting: false,
-          walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-          chainId: '0x534e5f474f45524c49',
-          tokenService: null
-        });
-        console.log('Mock wallet connected for demo due to connection error');
-      } else {
-        setWalletState(prev => ({ ...prev, isConnecting: false }));
-        throw error;
-      }
+      // Create token service with the connected wallet
+      const service = await createTokenService(walletInstance.account, walletInstance.provider);
+      
+      // Update wallet state with successful connection
+      setWalletState({
+        account: walletInstance.account,
+        walletAddress: walletInstance.account.address,
+        isConnected: true,
+        isConnecting: false,
+        tokenService: service,
+        chainId: walletInstance.provider?.chainId || ''
+      });
+      
+      console.log('✅ Wallet connected and token service created:', {
+        address: walletInstance.account.address,
+        chainId: walletInstance.provider?.chainId,
+        hasTokenService: !!service
+      });
+
+      return service;
+    } catch (error) {
+      console.error('❌ Failed to connect wallet:', error);
+      
+      // Reset connecting state on error
+      setWalletState(prev => ({ ...prev, isConnecting: false }));
+      
+      // Re-throw the error so components can handle it
+      throw new Error(`Wallet connection failed: ${error.message}`);
     }
   };
 
   const disconnectWallet = () => {
     try {
+      console.log('🔌 Disconnecting wallet');
+      
       setWalletState({
         account: null,
         isConnected: false,
@@ -111,9 +101,10 @@ export const useWalletConnection = () => {
         chainId: '',
         tokenService: null
       });
-      console.log('Wallet disconnected');
+      
+      console.log('✅ Wallet disconnected successfully');
     } catch (error) {
-      console.error('Error disconnecting wallet:', error);
+      console.error('❌ Error disconnecting wallet:', error);
     }
   };
 

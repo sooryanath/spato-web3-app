@@ -7,6 +7,7 @@ import RecentTransactions from "@/components/dashboard/RecentTransactions";
 import ActiveLoansTable from "@/components/dashboard/ActiveLoansTable";
 import DisputedLoansTable from "@/components/dashboard/DisputedLoansTable";
 import WalletConnection from "@/components/web3/WalletConnection";
+import TransactionStatus from "@/components/web3/TransactionStatus";
 import { Web3Provider } from "@/contexts/Web3Context";
 
 const BankDashboard = () => {
@@ -22,8 +23,9 @@ const BankDashboard = () => {
             <div className="lg:col-span-2">
               <CATRequestsTable />
             </div>
-            <div className="space-y-8">
+            <div className="space-y-6">
               <WalletConnection />
+              <TransactionStatus />
               <IssueTokensForm />
               <RecentTransactions />
             </div>

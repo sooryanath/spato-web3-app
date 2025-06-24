@@ -1,3 +1,4 @@
+
 import { getStarknet } from 'get-starknet-core';
 import { RpcProvider } from 'starknet';
 
@@ -114,13 +115,9 @@ export const CAT_TOKEN_ABI = [
 
 // Environment detection utility
 const getEnvironment = (): 'development' | 'testnet' | 'mainnet' => {
-  // Check if we're in development mode
   if (process.env.NODE_ENV === 'development') {
     return 'development';
   }
-  
-  // For production builds, we'll default to testnet since that's what you're using
-  // You can modify this logic based on your deployment strategy
   return 'testnet';
 };
 
@@ -133,9 +130,9 @@ const getContractConfig = () => {
   switch (environment) {
     case 'development':
       return {
-        address: '0x12345678901234567890123456789012345678901234567890123456789abcde', // Mock address for development
+        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e', // Use real testnet contract even in dev
         abi: CAT_TOKEN_ABI,
-        name: 'CAT Token (Dev)',
+        name: 'CAT Token',
         symbol: 'CAT',
         decimals: 18,
         network: 'sepolia' as const
@@ -143,7 +140,7 @@ const getContractConfig = () => {
     
     case 'testnet':
       return {
-        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e', // Your real testnet contract
+        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e',
         abi: CAT_TOKEN_ABI,
         name: 'CAT Token',
         symbol: 'CAT',
@@ -153,7 +150,7 @@ const getContractConfig = () => {
     
     case 'mainnet':
       return {
-        address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7', // Placeholder for mainnet
+        address: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
         abi: CAT_TOKEN_ABI,
         name: 'CAT Token',
         symbol: 'CAT',
@@ -163,7 +160,7 @@ const getContractConfig = () => {
     
     default:
       return {
-        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e', // Default to testnet
+        address: '0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e',
         abi: CAT_TOKEN_ABI,
         name: 'CAT Token',
         symbol: 'CAT',
@@ -173,19 +170,16 @@ const getContractConfig = () => {
   }
 };
 
-// Contract configuration - using function to support environment-specific config
 export const CONTRACT_CONFIG = getContractConfig();
 
-// STRK Token configuration (official StarkNet token) - Updated address
 export const STRK_TOKEN_CONFIG = {
-  address: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d', // Correct STRK token address for Sepolia
-  abi: CAT_TOKEN_ABI, // Same ERC20 ABI
+  address: '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d',
+  abi: CAT_TOKEN_ABI,
   name: 'StarkNet Token',
   symbol: 'STRK',
   decimals: 18
 };
 
-// Enhanced RPC Endpoints with better failover support
 export const RPC_ENDPOINTS = {
   mainnet: [
     'https://starknet-mainnet.public.blastapi.io',
@@ -200,7 +194,6 @@ export const RPC_ENDPOINTS = {
   ]
 };
 
-// Create provider with failover support
 export const createProviderWithFailover = async (network: 'mainnet' | 'sepolia' = 'sepolia'): Promise<RpcProvider> => {
   const endpoints = RPC_ENDPOINTS[network];
   
@@ -209,7 +202,6 @@ export const createProviderWithFailover = async (network: 'mainnet' | 'sepolia' 
       console.log(`🔗 Attempting to connect to RPC: ${endpoint}`);
       const provider = new RpcProvider({ nodeUrl: endpoint });
       
-      // Test the connection
       await provider.getChainId();
       console.log(`✅ Successfully connected to RPC: ${endpoint}`);
       return provider;
@@ -219,7 +211,6 @@ export const createProviderWithFailover = async (network: 'mainnet' | 'sepolia' 
     }
   }
   
-  // If all endpoints fail, use the first one as fallback
   console.warn('⚠️ All RPC endpoints failed, using fallback');
   return new RpcProvider({ nodeUrl: endpoints[0] });
 };
@@ -247,20 +238,34 @@ export const connectToWallet = async (walletId: string) => {
   try {
     console.log(`🔗 Connecting to wallet: ${walletId}`);
     const starknet = getStarknet();
+    
+    // Get available wallets first
     const availableWallets = await starknet.getAvailableWallets();
+    console.log('📋 Available wallets:', availableWallets);
     
     const targetWallet = availableWallets.find(w => w.id === walletId);
     if (!targetWallet) {
-      throw new Error(`Wallet ${walletId} not found`);
+      throw new Error(`Wallet ${walletId} not found. Available wallets: ${availableWallets.map(w => w.id).join(', ')}`);
     }
 
-    const walletInstance = await starknet.enable(targetWallet);
+    console.log(`🎯 Found target wallet:`, targetWallet);
+    
+    // Enable the wallet with proper configuration
+    const walletInstance = await starknet.enable(targetWallet, {
+      showModal: false // Prevent multiple modals
+    });
+    
+    console.log(`🔄 Wallet instance created:`, {
+      account: !!walletInstance?.account,
+      provider: !!walletInstance?.provider,
+      address: walletInstance?.account?.address
+    });
     
     if (!walletInstance?.account) {
-      throw new Error('Failed to connect to wallet');
+      throw new Error(`Failed to get account from wallet ${walletId}`);
     }
 
-    // Create a provider with the correct network based on environment
+    // Create enhanced provider
     const enhancedProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
     
     console.log('✅ Wallet connected successfully:', {
@@ -272,7 +277,7 @@ export const connectToWallet = async (walletId: string) => {
 
     return {
       ...walletInstance,
-      provider: enhancedProvider // Use our enhanced provider
+      provider: enhancedProvider
     };
   } catch (error) {
     console.error('❌ Error connecting to wallet:', error);
@@ -298,7 +303,6 @@ export const getNetworkName = (chainId: string): string => {
   }
 };
 
-// Cairo-compatible amount formatting
 export const formatTokenAmount = (amount: string, decimals: number = 18): { low: string; high: string } => {
   const amountBN = BigInt(amount) * BigInt(10 ** decimals);
   const low = (amountBN & BigInt('0xffffffffffffffffffffffffffffffff')).toString();
@@ -306,22 +310,18 @@ export const formatTokenAmount = (amount: string, decimals: number = 18): { low:
   return { low, high };
 };
 
-// Enhanced token amount parsing with better error handling
 export const parseTokenAmount = (low: string, high: string, decimals: number = 18): string => {
   try {
     console.log(`🔢 Parsing token amount - low: ${low}, high: ${high}, decimals: ${decimals}`);
     
-    // Validate inputs
     if (!low && !high) {
       console.warn('⚠️ Both low and high are empty, returning 0');
       return '0';
     }
     
-    // Handle cases where values might be undefined or null
     const safeLow = low ? low.toString() : '0';
     const safeHigh = high ? high.toString() : '0';
     
-    // Convert to BigInt safely
     let lowBN: bigint;
     let highBN: bigint;
     
@@ -333,7 +333,6 @@ export const parseTokenAmount = (low: string, high: string, decimals: number = 1
       return '0';
     }
     
-    // Reconstruct the full amount
     const amountBN = (highBN << BigInt(128)) + lowBN;
     console.log(`🔢 Reconstructed amount BigInt: ${amountBN.toString()}`);
     
@@ -364,7 +363,6 @@ export const parseTokenAmount = (low: string, high: string, decimals: number = 1
   }
 };
 
-// Enhanced transaction status checker with retry logic
 export const checkTransactionStatus = async (provider: any, txHash: string, maxRetries: number = 3) => {
   let retries = 0;
   
@@ -389,13 +387,11 @@ export const checkTransactionStatus = async (provider: any, txHash: string, maxR
         throw error;
       }
       
-      // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, 2000 * retries));
     }
   }
 };
 
-// Utility function to format numbers with commas
 export const formatNumberWithCommas = (num: string): string => {
   if (!num || num === '0') return '0';
   
@@ -405,6 +401,6 @@ export const formatNumberWithCommas = (num: string): string => {
     return parts.join('.');
   } catch (error) {
     console.error('❌ Error formatting number with commas:', error);
-    return num; // Return original if formatting fails
+    return num;
   }
 };

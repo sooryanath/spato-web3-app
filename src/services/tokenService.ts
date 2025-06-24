@@ -1,3 +1,4 @@
+
 import { Contract, AccountInterface, ProviderInterface } from 'starknet';
 import { CONTRACT_CONFIG, STRK_TOKEN_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus, formatNumberWithCommas, createProviderWithFailover } from '@/utils/walletUtils';
 
@@ -24,7 +25,6 @@ export class TokenService {
   private strkContract: Contract;
   private account: AccountInterface;
   private provider: ProviderInterface;
-  private isUsingFallbackProvider: boolean = false;
 
   constructor(account: AccountInterface, provider: ProviderInterface) {
     this.account = account;
@@ -41,30 +41,26 @@ export class TokenService {
     });
   }
 
-  // Enhanced initialization with provider failover
   static async createWithFailover(account: AccountInterface): Promise<TokenService> {
     try {
       const enhancedProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
       return new TokenService(account, enhancedProvider);
     } catch (error) {
       console.error('❌ Failed to create enhanced provider, using fallback:', error);
-      // Create a fallback provider instead of trying to access account.provider
       const fallbackProvider = await createProviderWithFailover(CONTRACT_CONFIG.network);
       return new TokenService(account, fallbackProvider);
     }
   }
 
-  // Enhanced contract response validation
   private validateContractResponse(response: any, tokenSymbol: string): { low: string; high: string } | null {
     console.log(`🔍 Validating ${tokenSymbol} contract response:`, response);
     
-    // Handle different response formats
     if (!response) {
       console.warn(`⚠️ ${tokenSymbol} response is null/undefined`);
       return null;
     }
 
-    // If response is already in the correct format
+    // Handle u256 response format (low, high)
     if (response.low !== undefined && response.high !== undefined) {
       return {
         low: response.low.toString(),
@@ -72,7 +68,7 @@ export class TokenService {
       };
     }
 
-    // If response is an array with two elements
+    // Handle array format [low, high]
     if (Array.isArray(response) && response.length === 2) {
       return {
         low: response[0].toString(),
@@ -80,21 +76,17 @@ export class TokenService {
       };
     }
 
-    // If response has a different structure, try to extract values
-    if (typeof response === 'object') {
-      // Check for common alternative property names
-      const possibleLow = response.low || response[0] || response.value?.low;
-      const possibleHigh = response.high || response[1] || response.value?.high;
-      
-      if (possibleLow !== undefined && possibleHigh !== undefined) {
+    // Handle nested value structure
+    if (typeof response === 'object' && response.value) {
+      if (response.value.low !== undefined && response.value.high !== undefined) {
         return {
-          low: possibleLow.toString(),
-          high: possibleHigh.toString()
+          low: response.value.low.toString(),
+          high: response.value.high.toString()
         };
       }
     }
 
-    // If it's a single value, treat as low with high = 0
+    // Handle single value (treat as low with high = 0)
     if (typeof response === 'string' || typeof response === 'number') {
       return {
         low: response.toString(),
@@ -110,30 +102,15 @@ export class TokenService {
     try {
       console.log(`🪙 Minting ${amount} CAT tokens to ${recipient} using contract ${CONTRACT_CONFIG.address}`);
       
-      // Check if we're in development mode and using mock contract
-      if (process.env.NODE_ENV === 'development' && CONTRACT_CONFIG.address.includes('12345678901234567890')) {
-        console.log('🔧 Development mode detected with mock contract - simulating mint operation');
-        
-        // Return a simulated successful mint for development
-        const mockTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
-        
-        const mintResult: TokenMintResult = {
-          transactionHash: mockTxHash,
-          status: 'confirmed'
-        };
-        
-        console.log('✅ Mock mint transaction completed:', mockTxHash);
-        return mintResult;
-      }
-      
       // Format amount for Cairo u256
       const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
       console.log('🔢 Formatted amount for contract:', formattedAmount);
       
-      // Call mint function on real contract
+      // Call mint function on contract
+      console.log('📞 Calling mint function on contract...');
       const result = await this.catContract.mint(recipient, formattedAmount);
       
-      console.log('✅ Real mint transaction submitted:', result.transaction_hash);
+      console.log('✅ Mint transaction submitted:', result.transaction_hash);
       
       // Return initial result
       const mintResult: TokenMintResult = {
@@ -188,7 +165,7 @@ export class TokenService {
         console.error(`❌ Error getting CAT balance (attempt ${retries}):`, error);
         
         if (retries >= maxRetries) {
-          const fallbackBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
+          const fallbackBalance = '0';
           console.log(`🔄 Using fallback CAT balance: ${fallbackBalance}`);
           
           return {
@@ -206,25 +183,20 @@ export class TokenService {
   }
 
   async getStrkBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 3;
+    const maxRetries = 2;
     let retries = 0;
     
     while (retries < maxRetries) {
       try {
         console.log(`💎 Fetching STRK balance for ${address} (attempt ${retries + 1}/${maxRetries})`);
-        console.log(`🔗 Using STRK contract address: ${STRK_TOKEN_CONFIG.address}`);
         
         const balance = await this.strkContract.balance_of(address);
         console.log('🔍 Raw STRK balance response:', balance);
-        console.log('🔍 STRK response type:', typeof balance);
-        console.log('🔍 STRK response keys:', balance ? Object.keys(balance) : 'no keys');
         
         const validatedBalance = this.validateContractResponse(balance, 'STRK');
         if (!validatedBalance) {
           throw new Error('Invalid STRK balance response format');
         }
-        
-        console.log('🔍 Validated STRK balance:', validatedBalance);
         
         const formatted = parseTokenAmount(
           validatedBalance.low, 
@@ -244,14 +216,9 @@ export class TokenService {
       } catch (error) {
         retries++;
         console.error(`❌ Error getting STRK balance (attempt ${retries}):`, error);
-        console.error('🔍 Full STRK error details:', {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
-        });
         
         if (retries >= maxRetries) {
-          const fallbackBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
+          const fallbackBalance = '0';
           console.log(`🔄 Using fallback STRK balance: ${fallbackBalance}`);
           
           return {
@@ -261,7 +228,7 @@ export class TokenService {
           };
         }
         
-        await new Promise(resolve => setTimeout(resolve, 1500 * retries)); // Increased delay
+        await new Promise(resolve => setTimeout(resolve, 1500 * retries));
       }
     }
     
@@ -272,7 +239,6 @@ export class TokenService {
     try {
       console.log(`📊 Fetching all balances for ${address}`);
       
-      // Fetch both balances concurrently but handle errors independently
       const [catBalance, strkBalance] = await Promise.allSettled([
         this.getBalance(address),
         this.getStrkBalance(address)
@@ -280,11 +246,11 @@ export class TokenService {
 
       const catResult = catBalance.status === 'fulfilled' 
         ? catBalance.value 
-        : { formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', raw: { low: '0', high: '0' }, isRealData: false };
+        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false };
         
       const strkResult = strkBalance.status === 'fulfilled' 
         ? strkBalance.value 
-        : { formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', raw: { low: '0', high: '0' }, isRealData: false };
+        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false };
 
       console.log('✅ All balances retrieved:', {
         CAT: `${catResult.formatted} (${catResult.isRealData ? 'real' : 'fallback'})`,
@@ -298,22 +264,10 @@ export class TokenService {
     } catch (error) {
       console.error('❌ Error getting all balances:', error);
       
-      // Return fallback balances
-      const fallbackBalances = {
-        cat: { 
-          formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', 
-          raw: { low: '0', high: '0' },
-          isRealData: false
-        },
-        strk: { 
-          formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', 
-          raw: { low: '0', high: '0' },
-          isRealData: false
-        }
+      return {
+        cat: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false },
+        strk: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false }
       };
-      
-      console.log('🔄 Using fallback balances:', fallbackBalances);
-      return fallbackBalances;
     }
   }
 
@@ -372,7 +326,7 @@ export class TokenService {
       return new Error('Insufficient balance to perform this transaction');
     }
     
-    if (error.message?.includes('unauthorized')) {
+    if (error.message?.includes('unauthorized') || error.message?.includes('caller is not the owner')) {
       return new Error('Unauthorized to mint tokens - check contract permissions');
     }
     
@@ -380,17 +334,20 @@ export class TokenService {
       return new Error('Invalid recipient address provided');
     }
     
-    if (error.message?.includes('Failed to fetch')) {
+    if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
       return new Error('Network connection error - please check your internet connection');
     }
     
-    // Generic error handling
+    if (error.message?.includes('User rejected') || error.message?.includes('user rejected')) {
+      return new Error('Transaction was rejected by user');
+    }
+    
     return new Error(`Contract operation failed: ${error.message || 'Unknown error'}`);
   }
 }
 
 export const createTokenService = async (account: AccountInterface, provider?: ProviderInterface): Promise<TokenService> => {
-  console.log('🏭 Creating TokenService instance with enhanced provider');
+  console.log('🏭 Creating TokenService instance');
   
   if (provider) {
     return new TokenService(account, provider);

@@ -22,15 +22,24 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const connectWallet = async (walletId?: string) => {
-    const service = await connectWalletHook(walletId);
-    
-    if (service && walletState.walletAddress) {
-      await initializeBalances(service, walletState.walletAddress);
+    try {
+      console.log('🔄 Web3Context: Starting wallet connection...');
+      const service = await connectWalletHook(walletId);
+      
+      if (service && walletState.walletAddress) {
+        console.log('🔄 Web3Context: Initializing balances after connection...');
+        await initializeBalances(service, walletState.walletAddress);
+      }
+    } catch (error) {
+      console.error('❌ Web3Context: Wallet connection failed:', error);
+      // Re-throw so components can handle the error appropriately
+      throw error;
     }
   };
 
   useEffect(() => {
     if (walletState.tokenService && walletState.walletAddress && walletState.isConnected) {
+      console.log('🔄 Web3Context: Auto-initializing balances for connected wallet');
       initializeBalances(walletState.tokenService, walletState.walletAddress);
     }
   }, [walletState.tokenService, walletState.walletAddress, walletState.isConnected, initializeBalances]);

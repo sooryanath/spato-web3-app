@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, AlertCircle, CheckCircle, ExternalLink, ShieldAlert } from "lucide-react";
+import { Banknote, AlertCircle, CheckCircle, ExternalLink, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
@@ -34,10 +34,12 @@ const RedeemTokensForLoan = () => {
       return;
     }
 
+    // Primary security check - validate vendor wallet
     if (!isCorrectVendorWallet) {
+      console.error(`🚫 Unauthorized redemption attempt from: ${walletAddress}`);
       toast({
-        title: "Wrong Wallet Connected",
-        description: "Please connect the authorized vendor wallet to perform redemptions",
+        title: "Unauthorized Wallet",
+        description: "Only the authorized vendor wallet can perform token redemptions for loan payments",
         variant: "destructive"
       });
       return;
@@ -68,20 +70,21 @@ const RedeemTokensForLoan = () => {
     setTransactionHash(null);
     
     try {
-      console.log(`🏦 Redeeming ${amount} CAT tokens from vendor ${walletAddress} to bank wallet: ${BANK_WALLET_ADDRESS}`);
+      console.log(`🏦 Authorized redemption: ${amount} CAT tokens from vendor ${walletAddress} to bank wallet: ${BANK_WALLET_ADDRESS}`);
       
-      // Verify sender address one more time before transfer
+      // Double-check sender address before transfer (defense in depth)
       if (walletAddress?.toLowerCase() !== EXPECTED_VENDOR_ADDRESS.toLowerCase()) {
-        throw new Error('Unauthorized wallet address for redemption');
+        throw new Error('Security violation: Unauthorized wallet address for redemption');
       }
       
       const result = await transferTokens(BANK_WALLET_ADDRESS, amount);
       
       setTransactionHash(result.transactionHash);
+      console.log(`✅ Loan redemption successful: ${result.transactionHash}`);
       
       toast({
-        title: "Redemption Initiated",
-        description: `${amount} CAT tokens are being transferred to the bank for loan payment`,
+        title: "Redemption Successful",
+        description: `${amount} CAT tokens have been transferred to the bank for loan payment`,
       });
       
       // Refresh balance after successful transfer
@@ -95,8 +98,9 @@ const RedeemTokensForLoan = () => {
       
       let errorMessage = "Unable to process loan redemption. Please try again.";
       
-      if (error.message?.includes('Unauthorized wallet')) {
-        errorMessage = "Unauthorized wallet address. Please connect the correct vendor wallet.";
+      if (error.message?.includes('Security violation') || error.message?.includes('Unauthorized wallet')) {
+        errorMessage = "Security violation detected. Only authorized vendor wallets can perform redemptions.";
+        console.error('🚨 SECURITY ALERT: Unauthorized redemption attempt blocked');
       } else if (error.message?.includes('insufficient balance')) {
         errorMessage = "Insufficient balance to complete this redemption.";
       } else if (error.message?.includes('User rejected')) {
@@ -118,6 +122,7 @@ const RedeemTokensForLoan = () => {
   const availableBalance = parseFloat(balance.replace(/,/g, '')) || 0;
   const requestedAmount = parseFloat(amount) || 0;
   const isValidAmount = requestedAmount > 0 && requestedAmount <= availableBalance;
+  const canRedeem = isConnected && isCorrectVendorWallet && isValidAmount && !isProcessing;
 
   return (
     <Card>
@@ -125,18 +130,36 @@ const RedeemTokensForLoan = () => {
         <CardTitle className="flex items-center space-x-2">
           <Banknote className="w-5 h-5 text-green-600" />
           <span>Redeem Tokens for Loan</span>
+          {isConnected && isCorrectVendorWallet && (
+            <ShieldCheck className="w-4 h-4 text-green-600" />
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Wallet Validation Alert */}
-        {isConnected && !isCorrectVendorWallet && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        {/* Security Status Alert */}
+        {isConnected && (
+          <div className={`p-3 rounded-lg border ${
+            isCorrectVendorWallet 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
             <div className="flex items-center space-x-2">
-              <ShieldAlert className="w-4 h-4 text-amber-600" />
-              <span className="text-sm font-medium text-amber-800">Wrong Wallet Connected</span>
+              {isCorrectVendorWallet ? (
+                <>
+                  <ShieldCheck className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">Authorized Vendor Wallet</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-medium text-red-800">Unauthorized Wallet</span>
+                </>
+              )}
             </div>
-            <p className="text-xs text-amber-700 mt-1">
-              Please connect the authorized vendor wallet to perform redemptions.
+            <p className="text-xs mt-1 text-gray-700">
+              {isCorrectVendorWallet 
+                ? 'This wallet is authorized to perform loan redemptions.'
+                : 'Only the authorized vendor wallet can perform redemptions. Please connect the correct wallet.'}
             </p>
           </div>
         )}
@@ -159,7 +182,8 @@ const RedeemTokensForLoan = () => {
               placeholder="Enter amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              disabled={!isConnected || isProcessing || !isCorrectVendorWallet}
+              disabled={!canRedeem}
+              className={!isCorrectVendorWallet && isConnected ? 'border-red-300 bg-red-50' : ''}
             />
           </div>
           
@@ -168,13 +192,13 @@ const RedeemTokensForLoan = () => {
               {isValidAmount && isCorrectVendorWallet ? (
                 <>
                   <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="text-green-600">Valid amount</span>
+                  <span className="text-green-600">Ready to redeem</span>
                 </>
               ) : (
                 <>
                   <AlertCircle className="w-4 h-4 text-red-600" />
                   <span className="text-red-600">
-                    {!isCorrectVendorWallet ? "Wrong wallet connected" : 
+                    {!isCorrectVendorWallet ? "Unauthorized wallet" : 
                      requestedAmount > availableBalance ? "Insufficient balance" : "Invalid amount"}
                   </span>
                 </>
@@ -183,41 +207,51 @@ const RedeemTokensForLoan = () => {
           )}
         </div>
         
-        <div className="space-y-2">
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">Expected Vendor Wallet:</span>
-            <div className="mt-1 p-2 bg-gray-50 rounded text-xs font-mono break-all">
-              {EXPECTED_VENDOR_ADDRESS}
+        <div className="space-y-3">
+          <div className="text-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="font-medium text-gray-700">Security Information</span>
             </div>
-            {isConnected && (
-              <div className="mt-1 flex items-center space-x-2">
-                <span className="text-xs">Status:</span>
-                {isCorrectVendorWallet ? (
-                  <Badge variant="outline" className="text-green-700 border-green-300">
-                    ✓ Authorized
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-red-700 border-red-300">
-                    ✗ Unauthorized
-                  </Badge>
-                )}
+            
+            <div className="space-y-2">
+              <div>
+                <span className="text-xs text-gray-600">Authorized Vendor Wallet:</span>
+                <div className="mt-1 p-2 bg-gray-50 rounded text-xs font-mono break-all">
+                  {EXPECTED_VENDOR_ADDRESS}
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">Bank Wallet:</span>
-            <div className="mt-1 p-2 bg-gray-50 rounded text-xs font-mono break-all">
-              {BANK_WALLET_ADDRESS}
+              
+              {isConnected && (
+                <div>
+                  <span className="text-xs text-gray-600">Connected Wallet:</span>
+                  <div className="mt-1 p-2 bg-gray-50 rounded text-xs font-mono break-all flex items-center justify-between">
+                    <span>{walletAddress}</span>
+                    <Badge variant="outline" className={
+                      isCorrectVendorWallet 
+                        ? "text-green-700 border-green-300 bg-green-50" 
+                        : "text-red-700 border-red-300 bg-red-50"
+                    }>
+                      {isCorrectVendorWallet ? "✓ Authorized" : "✗ Unauthorized"}
+                    </Badge>
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <span className="text-xs text-gray-600">Bank Wallet (Destination):</span>
+                <div className="mt-1 p-2 bg-blue-50 rounded text-xs font-mono break-all">
+                  {BANK_WALLET_ADDRESS}
+                </div>
+              </div>
             </div>
           </div>
           
           {transactionHash && (
             <div className="text-sm text-gray-600">
-              <span className="font-medium">Transaction:</span>
-              <div className="mt-1 p-2 bg-blue-50 rounded text-xs font-mono break-all flex items-center justify-between">
+              <span className="font-medium">Transaction Hash:</span>
+              <div className="mt-1 p-2 bg-green-50 rounded text-xs font-mono break-all flex items-center justify-between">
                 <span>{transactionHash}</span>
-                <ExternalLink className="w-3 h-3 text-blue-600 ml-2 flex-shrink-0" />
+                <ExternalLink className="w-3 h-3 text-green-600 ml-2 flex-shrink-0" />
               </div>
             </div>
           )}
@@ -225,25 +259,43 @@ const RedeemTokensForLoan = () => {
         
         <Button
           onClick={handleRedeem}
-          disabled={!isConnected || !isValidAmount || isProcessing || !isCorrectVendorWallet}
-          className="w-full bg-green-600 hover:bg-green-700"
+          disabled={!canRedeem}
+          className={`w-full ${
+            canRedeem 
+              ? "bg-green-600 hover:bg-green-700" 
+              : "bg-gray-400 cursor-not-allowed"
+          }`}
         >
-          {isProcessing ? "Processing Redemption..." : "Redeem for Loan Payment"}
+          {isProcessing ? (
+            "Processing Secure Redemption..."
+          ) : !isConnected ? (
+            "Connect Wallet to Redeem"
+          ) : !isCorrectVendorWallet ? (
+            "Connect Authorized Wallet"
+          ) : (
+            "Redeem for Loan Payment"
+          )}
         </Button>
         
-        {!isConnected ? (
-          <div className="text-center">
+        {/* Status Messages */}
+        {!isConnected && (
+          <div className="text-center p-3 bg-amber-50 rounded-lg">
             <p className="text-sm text-amber-600">
-              Connect your wallet to redeem tokens
+              Connect your wallet to redeem tokens for loan payment
             </p>
           </div>
-        ) : !isCorrectVendorWallet ? (
-          <div className="text-center">
-            <p className="text-sm text-red-600">
-              Connect the authorized vendor wallet to perform redemptions
+        )}
+        
+        {isConnected && !isCorrectVendorWallet && (
+          <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-sm text-red-600 font-medium">
+              Security Restriction: Only authorized vendor wallets can perform redemptions
+            </p>
+            <p className="text-xs text-red-500 mt-1">
+              Please connect the correct vendor wallet to continue
             </p>
           </div>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   );

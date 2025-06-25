@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useWeb3 } from '@/contexts/Web3Context';
 import { useToast } from '@/hooks/use-toast';
 import { Send, Loader2, AlertTriangle } from "lucide-react";
+import { validateTransferForm } from './TokenTransferValidation';
+import TokenTransferDebugger from './TokenTransferDebugger';
 
 const TokenTransferForm = () => {
   const [formData, setFormData] = useState({
@@ -49,77 +51,24 @@ const TokenTransferForm = () => {
     setDebugInfo(prev => [...prev.slice(-4), debugMessage]); // Keep last 5 messages
   };
 
-  const validateStarknetAddress = (address: string): boolean => {
-    // Basic Starknet address validation
-    if (!address) return false;
-    if (!address.startsWith('0x')) return false;
-    if (address.length < 60 || address.length > 70) return false;
-    if (!/^0x[0-9a-fA-F]+$/.test(address)) return false;
-    return true;
-  };
-
-  const validateAmount = (amount: string): boolean => {
-    const num = parseFloat(amount);
-    return !isNaN(num) && num > 0 && num <= 1000000; // Max 1M tokens per transfer
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     addDebugInfo('🚀 Starting token transfer validation...');
     
-    // Validation checks
-    if (!isConnected) {
-      addDebugInfo('❌ Wallet not connected');
+    // Validation
+    const validation = validateTransferForm(isConnected, formData, vendors);
+    if (!validation.isValid) {
+      addDebugInfo(`❌ Validation failed: ${validation.error}`);
       toast({
-        title: "Wallet Not Connected",
-        description: "Please connect your wallet to transfer tokens",
+        title: "Validation Error",
+        description: validation.error,
         variant: "destructive"
       });
       return;
     }
 
-    if (!formData.vendor || !formData.amount || !formData.purpose) {
-      addDebugInfo('❌ Missing required fields');
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!validateAmount(formData.amount)) {
-      addDebugInfo('❌ Invalid amount');
-      toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid amount between 0.01 and 1,000,000",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const selectedVendor = vendors.find(v => v.id === formData.vendor);
-    if (!selectedVendor) {
-      addDebugInfo('❌ Invalid vendor selection');
-      toast({
-        title: "Invalid Vendor",
-        description: "Please select a valid vendor",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!validateStarknetAddress(selectedVendor.address)) {
-      addDebugInfo(`❌ Invalid recipient address: ${selectedVendor.address}`);
-      toast({
-        title: "Invalid Address",
-        description: "Vendor address is not a valid Starknet address",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    const selectedVendor = vendors.find(v => v.id === formData.vendor)!;
     addDebugInfo(`✅ Validation passed - transferring to: ${selectedVendor.address}`);
     setIsTransferring(true);
 
@@ -157,38 +106,6 @@ const TokenTransferForm = () => {
       });
     } finally {
       setIsTransferring(false);
-    }
-  };
-
-  const handleTestConnection = async () => {
-    addDebugInfo('🧪 Testing wallet and contract connection...');
-    
-    if (!isConnected) {
-      addDebugInfo('❌ No wallet connected');
-      return;
-    }
-
-    if (!tokenService) {
-      addDebugInfo('❌ Token service not available');
-      return;
-    }
-
-    try {
-      addDebugInfo('📊 Attempting to fetch balance...');
-      await tokenService.getBalance(walletAddress);
-      addDebugInfo('✅ Connection test successful');
-      
-      toast({
-        title: "Connection Test",
-        description: "Wallet and contract connection working properly",
-      });
-    } catch (error: any) {
-      addDebugInfo(`❌ Connection test failed: ${error.message}`);
-      toast({
-        title: "Connection Test Failed",
-        description: error.message,
-        variant: "destructive"
-      });
     }
   };
 
@@ -278,14 +195,10 @@ const TokenTransferForm = () => {
               )}
             </Button>
             
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleTestConnection}
-              disabled={!isConnected}
-            >
-              Test Connection
-            </Button>
+            <TokenTransferDebugger 
+              debugInfo={debugInfo}
+              onAddDebugInfo={addDebugInfo}
+            />
           </div>
 
           {!isConnected && (
@@ -294,20 +207,6 @@ const TokenTransferForm = () => {
               <p className="text-sm text-amber-700">
                 Please connect your wallet to transfer tokens
               </p>
-            </div>
-          )}
-
-          {/* Debug Information */}
-          {debugInfo.length > 0 && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg border">
-              <h4 className="text-sm font-medium mb-2">Debug Information:</h4>
-              <div className="space-y-1">
-                {debugInfo.map((info, index) => (
-                  <p key={index} className="text-xs font-mono text-gray-600">
-                    {info}
-                  </p>
-                ))}
-              </div>
             </div>
           )}
         </form>

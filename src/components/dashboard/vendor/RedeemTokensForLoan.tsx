@@ -7,12 +7,13 @@ import { Banknote, AlertCircle, CheckCircle, ExternalLink, ShieldAlert, ShieldCh
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
+import { addressesEqual, normalizeAddress, formatAddressForDisplay } from "@/utils/addressUtils";
 
 // Bank wallet address for token redemption
 const BANK_WALLET_ADDRESS = "0x049D0D22Bba512f6A011cA4d461bAFE27349651d104bBEbDfd24233814Ca04E2";
 
-// Expected vendor wallet address that can perform redemptions
-const EXPECTED_VENDOR_ADDRESS = "0x02dec0e08e74972df0df86d11089d0bba1e22c87a6c0ede6ffc2c1a2243e3c16";
+// Expected vendor wallet address that can perform redemptions (normalized format)
+const EXPECTED_VENDOR_ADDRESS = "0x2dec0e08e74972df0df86d11089d0bba1e22c87a6c0ede6ffc2c1a2243e3c16";
 
 const RedeemTokensForLoan = () => {
   const [amount, setAmount] = useState("");
@@ -21,8 +22,8 @@ const RedeemTokensForLoan = () => {
   const { balance, isConnected, transferTokens, refreshBalance, walletAddress } = useWeb3();
   const { toast } = useToast();
 
-  // Check if the connected wallet is the expected vendor wallet
-  const isCorrectVendorWallet = walletAddress?.toLowerCase() === EXPECTED_VENDOR_ADDRESS.toLowerCase();
+  // Check if the connected wallet is the expected vendor wallet using normalized comparison
+  const isCorrectVendorWallet = walletAddress ? addressesEqual(walletAddress, EXPECTED_VENDOR_ADDRESS) : false;
 
   const handleRedeem = async () => {
     if (!isConnected) {
@@ -34,9 +35,17 @@ const RedeemTokensForLoan = () => {
       return;
     }
 
-    // Primary security check - validate vendor wallet
+    // Primary security check - validate vendor wallet using normalized comparison
     if (!isCorrectVendorWallet) {
       console.error(`🚫 Unauthorized redemption attempt from: ${walletAddress}`);
+      console.error(`🔍 Address comparison details:`, {
+        connected: walletAddress,
+        expected: EXPECTED_VENDOR_ADDRESS,
+        connectedNormalized: normalizeAddress(walletAddress || ''),
+        expectedNormalized: normalizeAddress(EXPECTED_VENDOR_ADDRESS),
+        areEqual: addressesEqual(walletAddress || '', EXPECTED_VENDOR_ADDRESS)
+      });
+      
       toast({
         title: "Unauthorized Wallet",
         description: "Only the authorized vendor wallet can perform token redemptions for loan payments",
@@ -73,7 +82,7 @@ const RedeemTokensForLoan = () => {
       console.log(`🏦 Authorized redemption: ${amount} CAT tokens from vendor ${walletAddress} to bank wallet: ${BANK_WALLET_ADDRESS}`);
       
       // Double-check sender address before transfer (defense in depth)
-      if (walletAddress?.toLowerCase() !== EXPECTED_VENDOR_ADDRESS.toLowerCase()) {
+      if (!addressesEqual(walletAddress || '', EXPECTED_VENDOR_ADDRESS)) {
         throw new Error('Security violation: Unauthorized wallet address for redemption');
       }
       
@@ -233,6 +242,9 @@ const RedeemTokensForLoan = () => {
                     }>
                       {isCorrectVendorWallet ? "✓ Authorized" : "✗ Unauthorized"}
                     </Badge>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    Normalized: {normalizeAddress(walletAddress || '')}
                   </div>
                 </div>
               )}

@@ -1,18 +1,19 @@
 
 import { useState } from "react";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import VendorDashboardHeader from "@/components/dashboard/VendorDashboardHeader";
 import VendorMetricsCards from "@/components/dashboard/vendor/VendorMetricsCards";
 import VendorWalletCard from "@/components/dashboard/vendor/VendorWalletCard";
 import VendorTransactionHistory from "@/components/dashboard/vendor/VendorTransactionHistory";
-import VendorQuickActions from "@/components/dashboard/vendor/VendorQuickActions";
 import VendorNotifications from "@/components/dashboard/vendor/VendorNotifications";
+import RedeemTokensForLoan from "@/components/dashboard/vendor/RedeemTokensForLoan";
+import TransferToSubVendors from "@/components/dashboard/vendor/TransferToSubVendors";
 import { Web3Provider } from "@/contexts/Web3Context";
 
 const VendorDashboard = () => {
   return (
     <Web3Provider>
       <div className="min-h-screen bg-gray-50">
-        <DashboardHeader 
+        <VendorDashboardHeader 
           userType="Vendor" 
           userName="Acme Corp" 
         />
@@ -28,7 +29,8 @@ const VendorDashboard = () => {
             {/* Right Column - Sidebar */}
             <div className="lg:col-span-4 space-y-6">
               <VendorWalletCard />
-              <VendorQuickActions />
+              <RedeemTokensForLoan />
+              <TransferToSubVendors />
               <VendorNotifications />
             </div>
           </div>

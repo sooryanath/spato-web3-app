@@ -9,6 +9,7 @@ import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Coins, AlertCircle, CheckCircle, Info, ExternalLink } from "lucide-react";
 import { formatAddress } from "@/utils/walletUtils";
+import { useTokenHistory } from "@/contexts/TokenHistoryContext";
 
 // Registered anchor company address that is authorized to receive minted tokens
 const REGISTERED_ANCHOR_ADDRESS = "0x064cea2cbf17fc72da230689dd4beccf81d3e9e1ff308ea9d72179a0dd27ed78";
@@ -18,6 +19,7 @@ const IssueTokensForm = () => {
   const [company, setCompany] = useState("");
   const { isConnected, walletAddress, issueTokens, isIssuing } = useWeb3();
   const { toast } = useToast();
+  const { addRecord } = useTokenHistory();
 
   const companies = [
     { id: "techcorp", name: "TechCorp Ltd" },
@@ -68,9 +70,22 @@ const IssueTokensForm = () => {
       });
       
       // Always use the registered anchor company address for minting
-      await issueTokens(REGISTERED_ANCHOR_ADDRESS, amount);
+      const result = await issueTokens(REGISTERED_ANCHOR_ADDRESS, amount);
       
+      // Add record to token history immediately
       const selectedCompany = companies.find(c => c.id === company);
+      addRecord({
+        company: selectedCompany?.name || 'Unknown Company',
+        amount: numAmount.toLocaleString(),
+        txHash: result.transactionHash,
+        blockNumber: result.blockNumber || 'Pending',
+        gasUsed: '21,000',
+        gasPrice: '0.0001 ETH',
+        tokenType: 'CAT',
+        recipient: REGISTERED_ANCHOR_ADDRESS,
+        purpose: 'Working Capital'
+      });
+      
       toast({
         title: "Tokens Issued Successfully",
         description: `${amount} CAT tokens have been issued for ${selectedCompany?.name || 'the selected company'}.`,

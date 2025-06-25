@@ -22,7 +22,7 @@ const TokenTransferForm = () => {
   const [isTransferring, setIsTransferring] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   
-  const { isConnected, issueTokens, walletAddress, tokenService } = useWeb3();
+  const { isConnected, transferTokens, walletAddress, tokenService } = useWeb3();
   const { toast } = useToast();
 
   // Using the testnet address for all vendors to test functionality
@@ -77,7 +77,7 @@ const TokenTransferForm = () => {
       addDebugInfo(`🏭 Token service available: ${!!tokenService}`);
       addDebugInfo(`💰 Transferring ${formData.amount} CAT to ${selectedVendor.name}`);
 
-      const result = await issueTokens(selectedVendor.address, formData.amount);
+      const result = await transferTokens(selectedVendor.address, formData.amount);
       
       addDebugInfo(`✅ Transfer successful: ${result.transactionHash}`);
       

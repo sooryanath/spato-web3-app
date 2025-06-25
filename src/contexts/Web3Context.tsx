@@ -16,7 +16,7 @@ export const useWeb3 = () => {
 
 export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { walletState, availableWallets, connectWallet: connectWalletHook, disconnectWallet } = useWalletConnection();
-  const { tokenState, refreshBalance, issueTokens, initializeBalances } = useTokenOperations(
+  const { tokenState, refreshBalance, issueTokens, transferTokens, initializeBalances } = useTokenOperations(
     walletState.tokenService,
     walletState.walletAddress
   );
@@ -85,6 +85,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     connectWallet,
     disconnectWallet,
     issueTokens,
+    transferTokens,
     isIssuing: tokenState.isIssuing,
     walletAddress: walletState.walletAddress,
     tokenService: walletState.tokenService,

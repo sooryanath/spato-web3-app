@@ -14,6 +14,7 @@ export interface Web3ContextType {
   connectWallet: (walletId?: string) => Promise<void>;
   disconnectWallet: () => void;
   issueTokens: (recipient: string, amount: string) => Promise<TokenMintResult>;
+  transferTokens: (recipient: string, amount: string) => Promise<TokenMintResult>;
   isIssuing: boolean;
   walletAddress: string;
   tokenService: TokenService | null;

@@ -82,6 +82,37 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
     }
   };
 
+  const transferTokens = async (recipient: string, amount: string): Promise<TokenMintResult> => {
+    if (!tokenService) {
+      const error = new Error('Token service unavailable');
+      console.error('❌ Cannot transfer tokens:', error.message);
+      throw error;
+    }
+
+    console.log(`💸 Starting token transfer: ${amount} CAT to ${recipient}`);
+    setTokenState(prev => ({ ...prev, isIssuing: true }));
+    
+    try {
+      const result = await tokenService.transferTokens(recipient, amount);
+      setTokenState(prev => ({ ...prev, lastMintResult: result }));
+      
+      // Refresh balance after successful transfer (with delay to allow blockchain confirmation)
+      setTimeout(() => {
+        console.log('⏰ Refreshing balance after transfer...');
+        refreshBalance();
+      }, 5000);
+      
+      console.log('✅ Tokens transferred successfully:', result);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Failed to transfer tokens:', error);
+      throw error;
+    } finally {
+      setTokenState(prev => ({ ...prev, isIssuing: false }));
+    }
+  };
+
   const initializeBalances = useCallback(async (service: TokenService, address: string) => {
     console.log('🔄 Initializing token balances...');
     
@@ -122,7 +153,7 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
     tokenState,
     refreshBalance,
     issueTokens,
+    transferTokens,
     initializeBalances
   };
 };
-

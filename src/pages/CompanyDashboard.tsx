@@ -8,6 +8,7 @@ import TokenTransferForm from '@/components/dashboard/company/TokenTransferForm'
 import VendorOverview from '@/components/dashboard/company/VendorOverview';
 import RecentTokenTransfers from '@/components/dashboard/company/RecentTokenTransfers';
 import DisputeResolution from '@/components/dashboard/company/DisputeResolution';
+import WalletConnectionCard from '@/components/dashboard/company/WalletConnectionCard';
 
 const CompanyDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -46,11 +47,16 @@ const CompanyDashboard = () => {
             <CompanyMetricsCards />
             
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               {/* Left Column */}
               <div className="space-y-8">
-                <TokenTransferForm />
+                <WalletConnectionCard />
                 <VendorOverview />
+              </div>
+              
+              {/* Middle Column */}
+              <div className="space-y-8">
+                <TokenTransferForm />
               </div>
               
               {/* Right Column */}

@@ -15,6 +15,7 @@ import ActiveLoansExplorer from "./pages/ActiveLoansExplorer";
 import DisputedLoansExplorer from "./pages/DisputedLoansExplorer";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import VendorManagement from "./pages/VendorManagement";
+import VendorDashboard from "./pages/VendorDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,7 +38,7 @@ const App = () => (
           <Route path="/bank-dashboard/disputed-loans" element={<DisputedLoansExplorer />} />
           <Route path="/company-dashboard" element={<CompanyDashboard />} />
           <Route path="/vendor-management" element={<VendorManagement />} />
-          <Route path="/vendor-dashboard" element={<BankDashboard />} />
+          <Route path="/vendor-dashboard" element={<VendorDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

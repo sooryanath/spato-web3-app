@@ -37,9 +37,8 @@ const CompanyDashboard = () => {
       <TokenHistoryProvider>
         <div className="min-h-screen bg-gray-50">
           <DashboardHeader 
-            title="TechCorp Industries" 
-            subtitle="Company Dashboard" 
-            userType="company"
+            userType="Company" 
+            userName="TechCorp Industries"
           />
           
           <div className="container mx-auto px-4 py-8 space-y-8">

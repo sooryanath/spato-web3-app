@@ -66,6 +66,42 @@ const CatIssuedDashboard = () => {
             <h1 className="text-2xl font-bold">Total CAT Issued Dashboard</h1>
           </div>
 
+          {/* Blockchain Explorer Section */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <ExternalLink className="w-5 h-5 text-purple-600" />
+                <span>Blockchain Explorer</span>
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                View contract transactions on StarkNet Sepolia
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-96 border rounded-lg overflow-hidden">
+                <iframe
+                  src="https://sepolia.voyager.online/contract/0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e#accountCalls"
+                  className="w-full h-full"
+                  title="StarkNet Voyager Explorer"
+                />
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Contract Address:</p>
+                  <p className="text-xs font-mono text-gray-600">0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open('https://sepolia.voyager.online/contract/0x0323569840755faaed149227f6110911d73255eb1f14df3614181e8d7fec315e#accountCalls', '_blank')}
+                  className="flex items-center space-x-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Open in Voyager</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

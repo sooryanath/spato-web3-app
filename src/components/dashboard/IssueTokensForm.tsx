@@ -1,13 +1,13 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToastAction } from "@/components/ui/toast";
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Coins, AlertCircle, CheckCircle, Info } from "lucide-react";
+import { Loader2, Coins, AlertCircle, CheckCircle, Info, ExternalLink } from "lucide-react";
 import { formatAddress } from "@/utils/walletUtils";
 
 // Registered anchor company address that is authorized to receive minted tokens
@@ -74,7 +74,16 @@ const IssueTokensForm = () => {
       toast({
         title: "Tokens Issued Successfully",
         description: `${amount} CAT tokens have been issued for ${selectedCompany?.name || 'the selected company'}.`,
-        variant: "default"
+        variant: "default",
+        action: (
+          <ToastAction 
+            altText="Go to Explorer"
+            onClick={() => window.open('https://sepolia.voyager.online/contract/0x064cea2cbf17fc72da230689dd4beccf81d3e9e1ff308ea9d72179a0dd27ed78', '_blank')}
+          >
+            <ExternalLink className="w-4 h-4 mr-1" />
+            Explorer
+          </ToastAction>
+        )
       });
       
       // Reset form

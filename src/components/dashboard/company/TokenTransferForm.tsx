@@ -10,7 +10,6 @@ import { useWeb3 } from '@/contexts/Web3Context';
 import { useToast } from '@/hooks/use-toast';
 import { Send, Loader2, AlertTriangle } from "lucide-react";
 import { validateTransferForm } from './TokenTransferValidation';
-import TokenTransferDebugger from './TokenTransferDebugger';
 
 const TokenTransferForm = () => {
   const [formData, setFormData] = useState({
@@ -20,7 +19,6 @@ const TokenTransferForm = () => {
     notes: ''
   });
   const [isTransferring, setIsTransferring] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
   
   const { isConnected, transferTokens, walletAddress, tokenService } = useWeb3();
   const { toast } = useToast();
@@ -44,22 +42,12 @@ const TokenTransferForm = () => {
     'Other'
   ];
 
-  const addDebugInfo = (message: string) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const debugMessage = `[${timestamp}] ${message}`;
-    console.log(debugMessage);
-    setDebugInfo(prev => [...prev.slice(-4), debugMessage]); // Keep last 5 messages
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    addDebugInfo('🚀 Starting token transfer validation...');
     
     // Validation
     const validation = validateTransferForm(isConnected, formData, vendors);
     if (!validation.isValid) {
-      addDebugInfo(`❌ Validation failed: ${validation.error}`);
       toast({
         title: "Validation Error",
         description: validation.error,
@@ -69,17 +57,10 @@ const TokenTransferForm = () => {
     }
 
     const selectedVendor = vendors.find(v => v.id === formData.vendor)!;
-    addDebugInfo(`✅ Validation passed - transferring to: ${selectedVendor.address}`);
     setIsTransferring(true);
 
     try {
-      addDebugInfo(`🔗 Current wallet: ${walletAddress}`);
-      addDebugInfo(`🏭 Token service available: ${!!tokenService}`);
-      addDebugInfo(`💰 Transferring ${formData.amount} CAT to ${selectedVendor.name}`);
-
       const result = await transferTokens(selectedVendor.address, formData.amount);
-      
-      addDebugInfo(`✅ Transfer successful: ${result.transactionHash}`);
       
       toast({
         title: "Transfer Initiated",
@@ -96,7 +77,6 @@ const TokenTransferForm = () => {
 
     } catch (error: any) {
       const errorMessage = error.message || 'Unknown error occurred';
-      addDebugInfo(`❌ Transfer failed: ${errorMessage}`);
       console.error('❌ Token transfer failed:', error);
       
       toast({
@@ -128,7 +108,7 @@ const TokenTransferForm = () => {
               <SelectContent>
                 {vendors.map((vendor) => (
                   <SelectItem key={vendor.id} value={vendor.id}>
-                    {vendor.name} (Test Address)
+                    {vendor.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -176,30 +156,23 @@ const TokenTransferForm = () => {
             />
           </div>
 
-          <div className="flex space-x-2">
-            <Button 
-              type="submit" 
-              className="flex-1"
-              disabled={!isConnected || isTransferring}
-            >
-              {isTransferring ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing Transfer...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Transfer Tokens
-                </>
-              )}
-            </Button>
-            
-            <TokenTransferDebugger 
-              debugInfo={debugInfo}
-              onAddDebugInfo={addDebugInfo}
-            />
-          </div>
+          <Button 
+            type="submit" 
+            className="w-full"
+            disabled={!isConnected || isTransferring}
+          >
+            {isTransferring ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing Transfer...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Transfer Tokens
+              </>
+            )}
+          </Button>
 
           {!isConnected && (
             <div className="flex items-center space-x-2 p-3 bg-amber-50 rounded-lg border border-amber-200">

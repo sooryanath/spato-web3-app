@@ -9,7 +9,6 @@ import VendorOverview from '@/components/dashboard/company/VendorOverview';
 import RecentTokenTransfers from '@/components/dashboard/company/RecentTokenTransfers';
 import DisputeResolution from '@/components/dashboard/company/DisputeResolution';
 import WalletConnectionCard from '@/components/dashboard/company/WalletConnectionCard';
-import ContractDebugger from '@/components/debug/ContractDebugger';
 
 const CompanyDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +52,6 @@ const CompanyDashboard = () => {
               <div className="space-y-8">
                 <WalletConnectionCard />
                 <VendorOverview />
-                <ContractDebugger />
               </div>
               
               {/* Middle Column */}

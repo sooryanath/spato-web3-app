@@ -1,15 +1,16 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { useWeb3 } from '@/contexts/Web3Context';
 import { useToast } from '@/hooks/use-toast';
-import { Send, Loader2, AlertTriangle } from "lucide-react";
+import { Send } from "lucide-react";
 import { validateTransferForm } from './TokenTransferValidation';
+import VendorSelector from './transfer/VendorSelector';
+import TokenAmountField from './transfer/TokenAmountField';
+import PurposeSelector from './transfer/PurposeSelector';
+import NotesField from './transfer/NotesField';
+import TransferButton from './transfer/TransferButton';
+import ConnectionAlert from './transfer/ConnectionAlert';
 
 const TokenTransferForm = () => {
   const [formData, setFormData] = useState({
@@ -20,7 +21,7 @@ const TokenTransferForm = () => {
   });
   const [isTransferring, setIsTransferring] = useState(false);
   
-  const { isConnected, transferTokens, walletAddress, tokenService } = useWeb3();
+  const { isConnected, transferTokens } = useWeb3();
   const { toast } = useToast();
 
   // Using the testnet address for all vendors to test functionality
@@ -99,89 +100,35 @@ const TokenTransferForm = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="vendor">Select Vendor *</Label>
-            <Select value={formData.vendor} onValueChange={(value) => setFormData({...formData, vendor: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a vendor..." />
-              </SelectTrigger>
-              <SelectContent>
-                {vendors.map((vendor) => (
-                  <SelectItem key={vendor.id} value={vendor.id}>
-                    {vendor.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <VendorSelector
+            value={formData.vendor}
+            onChange={(value) => setFormData({...formData, vendor: value})}
+            vendors={vendors}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (CAT) *</Label>
-            <Input
-              id="amount"
-              type="number"
-              placeholder="Enter amount..."
-              value={formData.amount}
-              onChange={(e) => setFormData({...formData, amount: e.target.value})}
-              min="0.01"
-              max="1000000"
-              step="0.01"
-            />
-          </div>
+          <TokenAmountField
+            value={formData.amount}
+            onChange={(value) => setFormData({...formData, amount: value})}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="purpose">Purpose *</Label>
-            <Select value={formData.purpose} onValueChange={(value) => setFormData({...formData, purpose: value})}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select purpose..." />
-              </SelectTrigger>
-              <SelectContent>
-                {transferPurposes.map((purpose) => (
-                  <SelectItem key={purpose} value={purpose}>
-                    {purpose}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <PurposeSelector
+            value={formData.purpose}
+            onChange={(value) => setFormData({...formData, purpose: value})}
+            purposes={transferPurposes}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Additional Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Optional notes for this transfer..."
-              value={formData.notes}
-              onChange={(e) => setFormData({...formData, notes: e.target.value})}
-              rows={3}
-            />
-          </div>
+          <NotesField
+            value={formData.notes}
+            onChange={(value) => setFormData({...formData, notes: value})}
+          />
 
-          <Button 
-            type="submit" 
-            className="w-full"
-            disabled={!isConnected || isTransferring}
-          >
-            {isTransferring ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing Transfer...
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Transfer Tokens
-              </>
-            )}
-          </Button>
+          <TransferButton
+            isConnected={isConnected}
+            isTransferring={isTransferring}
+            onSubmit={() => {}}
+          />
 
-          {!isConnected && (
-            <div className="flex items-center space-x-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <p className="text-sm text-amber-700">
-                Please connect your wallet to transfer tokens
-              </p>
-            </div>
-          )}
+          <ConnectionAlert isConnected={isConnected} />
         </form>
       </CardContent>
     </Card>

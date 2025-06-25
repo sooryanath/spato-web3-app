@@ -2,8 +2,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const CATRequestsTable = () => {
+  const navigate = useNavigate();
+
   const requests = [
     {
       id: "CAT-001",
@@ -49,7 +53,7 @@ const CATRequestsTable = () => {
   };
 
   return (
-    <Card>
+    <Card className="relative">
       <CardHeader>
         <CardTitle>CAT Requests</CardTitle>
       </CardHeader>
@@ -91,6 +95,17 @@ const CATRequestsTable = () => {
             ))}
           </TableBody>
         </Table>
+        
+        {/* View Explorer Button */}
+        <div className="absolute bottom-4 right-4">
+          <Button
+            onClick={() => navigate('/bank-dashboard/active-requests')}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>View Explorer</span>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

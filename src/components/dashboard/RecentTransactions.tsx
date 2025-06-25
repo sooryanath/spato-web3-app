@@ -1,7 +1,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const RecentTransactions = () => {
+  const navigate = useNavigate();
+
   const transactions = [
     {
       id: "TXN-001",
@@ -27,7 +32,7 @@ const RecentTransactions = () => {
   ];
 
   return (
-    <Card>
+    <Card className="relative">
       <CardHeader>
         <CardTitle>Recent Transactions</CardTitle>
       </CardHeader>
@@ -45,6 +50,18 @@ const RecentTransactions = () => {
               </div>
             </div>
           ))}
+        </div>
+        
+        {/* View Explorer Button */}
+        <div className="absolute bottom-4 right-4">
+          <Button
+            onClick={() => navigate('/bank-dashboard/cat-issued')}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+            size="sm"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>View Explorer</span>
+          </Button>
         </div>
       </CardContent>
     </Card>

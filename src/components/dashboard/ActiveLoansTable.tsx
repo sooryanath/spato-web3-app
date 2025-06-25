@@ -2,8 +2,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const ActiveLoansTable = () => {
+  const navigate = useNavigate();
+
   const activeLoans = [
     {
       loanId: "L1001",
@@ -67,8 +71,14 @@ const ActiveLoansTable = () => {
           </TableBody>
         </Table>
         <div className="flex justify-end mt-4">
-          <Button variant="ghost" size="sm" className="text-blue-600">
-            View Explorer
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-2"
+            onClick={() => navigate('/bank-dashboard/active-loans')}
+          >
+            <ExternalLink className="w-3 h-3 mr-1" />
+            <span className="text-xs">View Explorer</span>
           </Button>
         </div>
       </CardContent>

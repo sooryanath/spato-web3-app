@@ -53,7 +53,7 @@ const CATRequestsTable = () => {
   };
 
   return (
-    <Card className="relative">
+    <Card>
       <CardHeader>
         <CardTitle>CAT Requests</CardTitle>
       </CardHeader>
@@ -96,14 +96,16 @@ const CATRequestsTable = () => {
           </TableBody>
         </Table>
         
-        {/* View Explorer Button */}
-        <div className="absolute bottom-4 right-4">
+        {/* Optimized View Explorer Button */}
+        <div className="flex justify-end mt-4">
           <Button
             onClick={() => navigate('/bank-dashboard/active-requests')}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+            variant="ghost" 
+            size="sm" 
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-2"
           >
-            <ExternalLink className="w-4 h-4" />
-            <span>View Explorer</span>
+            <ExternalLink className="w-3 h-3 mr-1" />
+            <span className="text-xs">View Explorer</span>
           </Button>
         </div>
       </CardContent>

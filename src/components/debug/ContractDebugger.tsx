@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { investigateContract, validateContractABI, CONTRACT_CONFIG } from "@/utils/walletUtils";
-import { Loader2, Search, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Loader2, Search, CheckCircle, XCircle, AlertTriangle, Copy } from "lucide-react";
 import { createProviderWithFailover } from "@/utils/walletUtils";
+import { useToast } from '@/hooks/use-toast';
 
 interface ContractInfo {
   classHash: string;
   availableFunctions: string[];
   abiValid: boolean;
+  fullABI: any[];
 }
 
 const ContractDebugger = () => {
@@ -19,6 +21,7 @@ const ContractDebugger = () => {
   const [contractInfo, setContractInfo] = useState<ContractInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { isConnected } = useWeb3();
+  const { toast } = useToast();
 
   const investigateContractABI = async () => {
     setIsInvestigating(true);
@@ -26,7 +29,7 @@ const ContractDebugger = () => {
     setContractInfo(null);
 
     try {
-      console.log('🔍 Starting contract investigation...');
+      console.log('🔍 Starting comprehensive contract investigation...');
       const provider = await createProviderWithFailover(CONTRACT_CONFIG.network);
       
       // Investigate the actual contract
@@ -35,12 +38,16 @@ const ContractDebugger = () => {
       // Validate our current ABI
       const isValidABI = await validateContractABI(CONTRACT_CONFIG.address, CONTRACT_CONFIG.abi, provider);
       
-      // Extract function names from the actual contract ABI
+      // Extract function names and full ABI from the actual contract
       const availableFunctions: string[] = [];
+      const fullABI: any[] = [];
+      
       if (contractClass.abi) {
         contractClass.abi.forEach((item: any) => {
           if (item.type === 'function') {
             availableFunctions.push(item.name);
+            fullABI.push(item);
+            console.log(`📋 Found function: ${item.name} (${item.state_mutability})`);
           }
         });
       }
@@ -51,10 +58,12 @@ const ContractDebugger = () => {
       setContractInfo({
         classHash,
         availableFunctions,
-        abiValid: isValidABI
+        abiValid: isValidABI,
+        fullABI
       });
       
       console.log('✅ Contract investigation completed:', {
+        totalFunctions: availableFunctions.length,
         functions: availableFunctions,
         abiValid: isValidABI
       });
@@ -67,13 +76,36 @@ const ContractDebugger = () => {
     }
   };
 
+  const copyABI = () => {
+    if (contractInfo?.fullABI) {
+      const abiString = JSON.stringify(contractInfo.fullABI, null, 2);
+      navigator.clipboard.writeText(abiString);
+      toast({
+        title: "ABI Copied",
+        description: "Full contract ABI has been copied to clipboard",
+      });
+    }
+  };
+
+  const updateABI = () => {
+    if (!contractInfo?.fullABI) return;
+    
+    console.log('🔄 Contract ABI that should be used:');
+    console.log(JSON.stringify(contractInfo.fullABI, null, 2));
+    
+    toast({
+      title: "ABI Investigation Complete",
+      description: `Found ${contractInfo.availableFunctions.length} functions. Check console for full ABI.`,
+    });
+  };
+
   return (
     <Card className="border-blue-200">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Search className="w-5 h-5 text-blue-600" />
-            <span>Contract Debugger</span>
+            <span>Contract ABI Investigator</span>
           </div>
           <Badge variant="outline">
             Debug Mode
@@ -87,6 +119,7 @@ const ContractDebugger = () => {
             {CONTRACT_CONFIG.address}
           </p>
           <p><strong>Network:</strong> {CONTRACT_CONFIG.network}</p>
+          <p><strong>Current ABI Functions:</strong> {CONTRACT_CONFIG.abi.length}</p>
         </div>
         
         <Button 
@@ -102,7 +135,7 @@ const ContractDebugger = () => {
           ) : (
             <>
               <Search className="mr-2 h-4 w-4" />
-              Investigate Contract ABI
+              Fetch Complete Contract ABI
             </>
           )}
         </Button>
@@ -116,20 +149,25 @@ const ContractDebugger = () => {
         
         {contractInfo && (
           <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              {contractInfo.abiValid ? (
-                <CheckCircle className="w-4 h-4 text-green-600" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-yellow-600" />
-              )}
-              <span className="text-sm font-medium">
-                ABI Status: {contractInfo.abiValid ? 'Valid' : 'Mismatch Detected'}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {contractInfo.abiValid ? (
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                )}
+                <span className="text-sm font-medium">
+                  ABI Status: {contractInfo.abiValid ? 'Valid' : 'Incomplete'}
+                </span>
+              </div>
+              <Badge variant="secondary">
+                {contractInfo.availableFunctions.length} functions found
+              </Badge>
             </div>
             
             <div>
-              <p className="text-sm font-medium mb-2">Available Functions:</p>
-              <div className="space-y-1 max-h-32 overflow-y-auto">
+              <p className="text-sm font-medium mb-2">Available Functions ({contractInfo.availableFunctions.length}):</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
                 {contractInfo.availableFunctions.length > 0 ? (
                   contractInfo.availableFunctions.map((func, index) => (
                     <Badge key={index} variant="outline" className="text-xs mr-1 mb-1">
@@ -141,6 +179,23 @@ const ContractDebugger = () => {
                 )}
               </div>
             </div>
+
+            {contractInfo.fullABI.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <Button onClick={copyABI} variant="outline" size="sm">
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Full ABI
+                  </Button>
+                  <Button onClick={updateABI} size="sm">
+                    Update ABI in Console
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-600">
+                  Full ABI with {contractInfo.fullABI.length} functions ready for integration
+                </p>
+              </div>
+            )}
             
             <div>
               <p className="text-sm font-medium">Class Hash:</p>

@@ -1,4 +1,3 @@
-
 import { Contract, AccountInterface, ProviderInterface } from 'starknet';
 import { CONTRACT_CONFIG, STRK_TOKEN_CONFIG, formatTokenAmount, parseTokenAmount, checkTransactionStatus, formatNumberWithCommas, createProviderWithFailover } from '@/utils/walletUtils';
 
@@ -142,30 +141,21 @@ export class TokenService {
     }
 
     try {
-      // Check available transfer functions
-      const transferFunctions = ['transfer', 'transferFrom', 'Transfer'];
-      let transferFunction = null;
-      
-      for (const funcName of transferFunctions) {
-        if (this.catContract[funcName]) {
-          transferFunction = funcName;
-          console.log(`✅ Found transfer function: ${funcName}`);
-          break;
-        }
+      // Check if transfer function exists
+      if (!this.catContract.transfer) {
+        throw new Error('Transfer function not available in contract');
       }
-      
-      if (!transferFunction) {
-        throw new Error('No transfer function available in contract');
-      }
+
+      console.log('✅ Transfer function found in contract');
 
       // Execute transfer with retry logic
       const transferResult = await this.executeWithRetry(
         async () => {
-          console.log(`💸 Executing ${transferFunction} to ${recipient}...`);
+          console.log(`💸 Executing transfer to ${recipient}...`);
           const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
           console.log('🔢 Formatted amount for transfer:', formattedAmount);
           
-          const result = await this.catContract[transferFunction](recipient, formattedAmount);
+          const result = await this.catContract.transfer(recipient, formattedAmount);
           console.log('✅ Transfer executed successfully:', result.transaction_hash);
           return result;
         },

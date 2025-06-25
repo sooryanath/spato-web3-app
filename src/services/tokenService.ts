@@ -98,40 +98,88 @@ export class TokenService {
     return null;
   }
 
-  async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
-    try {
-      console.log(`🪙 Starting two-step minting process: ${amount} CAT tokens to ${recipient}`);
-      
-      // Step 1: Add bank to authorized list
-      console.log('📝 Step 1: Adding bank to authorized list...');
-      const bankAddress = this.account.address;
-      
-      let addBankResult;
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    maxRetries: number = 3,
+    delayMs: number = 2000
+  ): Promise<T> {
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        addBankResult = await this.catContract.add_bank(bankAddress);
-        console.log('✅ Bank added successfully:', addBankResult.transaction_hash);
+        console.log(`🔄 ${operationName} - Attempt ${attempt}/${maxRetries}`);
+        const result = await operation();
+        console.log(`✅ ${operationName} - Success on attempt ${attempt}`);
+        return result;
       } catch (error: any) {
-        if (error.message?.includes('Bank already exists')) {
-          console.log('✅ Bank already authorized, proceeding to mint...');
-        } else {
-          console.error('❌ Failed to add bank:', error);
-          throw new Error(`Failed to authorize bank: ${error.message}`);
+        lastError = error;
+        console.error(`❌ ${operationName} - Failed on attempt ${attempt}:`, error.message);
+        
+        if (attempt < maxRetries) {
+          const delay = delayMs * attempt; // Exponential backoff
+          console.log(`⏳ ${operationName} - Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
+    }
+    
+    throw lastError;
+  }
+
+  async mintTokens(recipient: string, amount: string): Promise<TokenMintResult> {
+    console.log(`🪙 Starting enhanced token minting: ${amount} CAT to ${recipient}`);
+    
+    // Enhanced pre-flight checks
+    if (!recipient || !amount) {
+      throw new Error('Recipient address and amount are required');
+    }
+    
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error('Amount must be a positive number');
+    }
+
+    try {
+      // Step 1: Add bank with retry logic
+      await this.executeWithRetry(
+        async () => {
+          console.log('📝 Adding bank to authorized list...');
+          const bankAddress = this.account.address;
+          
+          try {
+            const addBankResult = await this.catContract.add_bank(bankAddress);
+            console.log('✅ Bank added successfully:', addBankResult.transaction_hash);
+            return addBankResult;
+          } catch (error: any) {
+            if (error.message?.includes('Bank already exists')) {
+              console.log('✅ Bank already authorized');
+              return { transaction_hash: 'already_exists' };
+            }
+            throw error;
+          }
+        },
+        'Add Bank Operation',
+        2
+      );
       
-      // Wait a moment for the add_bank transaction to be processed
-      if (addBankResult) {
-        console.log('⏳ Waiting for bank authorization to be processed...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
+      // Wait for bank authorization to be processed
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Step 2: Mint tokens to recipient
-      console.log('🪙 Step 2: Minting tokens to recipient...');
-      const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
-      console.log('🔢 Formatted amount for contract:', formattedAmount);
-      
-      const mintResult = await this.catContract.mint_to_anchor(recipient, formattedAmount);
-      console.log('✅ Tokens minted successfully:', mintResult.transaction_hash);
+      // Step 2: Mint tokens with retry logic
+      const mintResult = await this.executeWithRetry(
+        async () => {
+          console.log('🪙 Minting tokens to recipient...');
+          const formattedAmount = formatTokenAmount(amount, CONTRACT_CONFIG.decimals);
+          console.log('🔢 Formatted amount for contract:', formattedAmount);
+          
+          const result = await this.catContract.mint_to_anchor(recipient, formattedAmount);
+          console.log('✅ Tokens minted successfully:', result.transaction_hash);
+          return result;
+        },
+        'Mint Tokens Operation',
+        3
+      );
       
       const result: TokenMintResult = {
         transactionHash: mintResult.transaction_hash,
@@ -145,7 +193,7 @@ export class TokenService {
       return result;
       
     } catch (error) {
-      console.error('❌ Error in two-step minting process:', error);
+      console.error('❌ Enhanced minting process failed:', error);
       throw this.handleContractError(error);
     }
   }
@@ -392,8 +440,9 @@ export class TokenService {
   private handleContractError(error: any): Error {
     console.error('🔧 Processing contract error:', error);
     
+    // Enhanced error mapping
     if (error.message?.includes('ENTRYPOINT_NOT_FOUND')) {
-      return new Error('Contract function not found - the contract ABI may not match the deployed contract. Please check the contract implementation.');
+      return new Error('Contract function not found. The contract may not be deployed correctly or the ABI is outdated.');
     }
     
     if (error.message?.includes('Bank already exists')) {
@@ -405,23 +454,31 @@ export class TokenService {
     }
     
     if (error.message?.includes('insufficient balance')) {
-      return new Error('Insufficient balance to perform this transaction');
+      return new Error('Insufficient balance to perform this transaction. Please check your wallet balance.');
     }
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('network')) {
-      return new Error('Network connection error - please check your internet connection');
+      return new Error('Network connection error. Please check your internet connection and try again.');
     }
     
     if (error.message?.includes('User rejected') || error.message?.includes('user rejected')) {
       return new Error('Transaction was rejected by user');
     }
     
-    return new Error(`Contract operation failed: ${error.message || 'Unknown error'}`);
+    if (error.message?.includes('Invalid address')) {
+      return new Error('The recipient address is not valid. Please check the address format.');
+    }
+    
+    if (error.message?.includes('timeout')) {
+      return new Error('Transaction timed out. Please try again with a higher gas fee.');
+    }
+    
+    return new Error(`Transaction failed: ${error.message || 'Unknown error occurred'}`);
   }
 }
 
 export const createTokenService = async (account: AccountInterface, provider?: ProviderInterface): Promise<TokenService> => {
-  console.log('🏭 Creating TokenService instance');
+  console.log('🏭 Creating enhanced TokenService instance');
   
   if (provider) {
     return new TokenService(account, provider);

@@ -1,9 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, AlertCircle, CheckCircle, ExternalLink, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Banknote, AlertCircle, CheckCircle, ExternalLink, ShieldAlert, ShieldCheck, Info } from "lucide-react";
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +23,9 @@ const RedeemTokensForLoan = () => {
 
   // Check if the connected wallet is the expected vendor wallet using normalized comparison
   const isCorrectVendorWallet = walletAddress ? addressesEqual(walletAddress, EXPECTED_VENDOR_ADDRESS) : false;
+
+  // Check if we're using mock/fallback data
+  const isMockData = process.env.NODE_ENV === 'development' && balance === '1,250.50';
 
   const handleRedeem = async () => {
     if (!isConnected) {
@@ -145,6 +147,19 @@ const RedeemTokensForLoan = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Mock Data Alert */}
+        {isMockData && (
+          <div className="p-3 rounded-lg border bg-blue-50 border-blue-200">
+            <div className="flex items-center space-x-2">
+              <Info className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">Development Mode</span>
+            </div>
+            <p className="text-xs text-blue-600 mt-1">
+              Using mock balance data. Connect to mainnet for real token balances.
+            </p>
+          </div>
+        )}
+
         {/* Security Status Alert */}
         {isConnected && (
           <div className={`p-3 rounded-lg border ${
@@ -176,8 +191,10 @@ const RedeemTokensForLoan = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Available Balance:</span>
-            <Badge variant="outline" className="text-green-700">
-              {balance} CAT
+            <Badge variant="outline" className={`${
+              isMockData ? 'text-blue-700 border-blue-300' : 'text-green-700'
+            }`}>
+              {balance} CAT {isMockData && '(Mock)'}
             </Badge>
           </div>
           
@@ -191,7 +208,7 @@ const RedeemTokensForLoan = () => {
               placeholder="Enter amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              disabled={!canRedeem}
+              disabled={!isConnected || !isCorrectVendorWallet}
               className={!isCorrectVendorWallet && isConnected ? 'border-red-300 bg-red-50' : ''}
             />
           </div>

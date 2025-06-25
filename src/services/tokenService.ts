@@ -54,6 +54,7 @@ export class TokenService {
 
   private validateContractResponse(response: any, tokenSymbol: string): { low: string; high: string } | null {
     console.log(`🔍 Validating ${tokenSymbol} contract response:`, response);
+    console.log(`🔍 Response type: ${typeof response}, isArray: ${Array.isArray(response)}`);
     
     if (!response) {
       console.warn(`⚠️ ${tokenSymbol} response is null/undefined`);
@@ -62,6 +63,7 @@ export class TokenService {
 
     // Handle u256 response format (low, high)
     if (response.low !== undefined && response.high !== undefined) {
+      console.log(`✅ ${tokenSymbol} response has low/high format`);
       return {
         low: response.low.toString(),
         high: response.high.toString()
@@ -69,7 +71,8 @@ export class TokenService {
     }
 
     // Handle array format [low, high]
-    if (Array.isArray(response) && response.length === 2) {
+    if (Array.isArray(response) && response.length >= 2) {
+      console.log(`✅ ${tokenSymbol} response is array format with length ${response.length}`);
       return {
         low: response[0].toString(),
         high: response[1].toString()
@@ -78,6 +81,7 @@ export class TokenService {
 
     // Handle nested value structure
     if (typeof response === 'object' && response.value) {
+      console.log(`🔍 ${tokenSymbol} response has nested value structure`);
       if (response.value.low !== undefined && response.value.high !== undefined) {
         return {
           low: response.value.low.toString(),
@@ -88,6 +92,16 @@ export class TokenService {
 
     // Handle single value (treat as low with high = 0)
     if (typeof response === 'string' || typeof response === 'number') {
+      console.log(`✅ ${tokenSymbol} response is single value: ${response}`);
+      return {
+        low: response.toString(),
+        high: '0'
+      };
+    }
+
+    // Handle BigNumber or similar objects
+    if (response.toString && typeof response.toString === 'function') {
+      console.log(`✅ ${tokenSymbol} response has toString method`);
       return {
         low: response.toString(),
         high: '0'
@@ -252,134 +266,109 @@ export class TokenService {
   }
 
   async getBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 2;
-    let retries = 0;
+    console.log(`💰 Fetching CAT balance for ${address}`);
     
-    while (retries < maxRetries) {
-      try {
-        console.log(`💰 Fetching CAT balance for ${address} (attempt ${retries + 1}/${maxRetries})`);
-        
-        // Try different balance function names
-        const balanceFunctions = ['balance_of', 'balanceOf', 'getBalance', 'Balance'];
-        let balance;
-        let usedFunction = '';
-        
-        for (const functionName of balanceFunctions) {
-          try {
-            if (this.catContract[functionName]) {
-              console.log(`📞 Attempting to call ${functionName} function...`);
-              balance = await this.catContract[functionName](address);
-              usedFunction = functionName;
-              console.log(`✅ Successfully called ${functionName} function`);
-              break;
-            } else {
-              console.log(`⚠️ Function ${functionName} not found in contract`);
-            }
-          } catch (error) {
-            console.error(`❌ Error calling ${functionName}:`, error);
-            continue;
-          }
-        }
-        
-        if (!balance) {
-          throw new Error('No valid balance function found in contract');
-        }
-        
-        console.log(`🔍 Raw CAT balance response from ${usedFunction}:`, balance);
-        
-        const validatedBalance = this.validateContractResponse(balance, 'CAT');
-        if (!validatedBalance) {
-          throw new Error('Invalid CAT balance response format');
-        }
-        
-        const formatted = parseTokenAmount(
-          validatedBalance.low, 
-          validatedBalance.high, 
-          CONTRACT_CONFIG.decimals
-        );
-        
-        const formattedWithCommas = formatNumberWithCommas(formatted);
-        
-        console.log(`✅ CAT balance retrieved: ${formattedWithCommas}`);
-        
-        return {
-          formatted: formattedWithCommas,
-          raw: validatedBalance,
-          isRealData: true
-        };
-      } catch (error) {
-        retries++;
-        console.error(`❌ Error getting CAT balance (attempt ${retries}):`, error);
-        
-        if (retries >= maxRetries) {
-          const fallbackBalance = '0';
-          console.log(`🔄 Using fallback CAT balance: ${fallbackBalance}`);
+    try {
+      // Enhanced balance retrieval with better error handling
+      const balance = await this.executeWithRetry(
+        async () => {
+          console.log('📞 Calling balance_of function...');
           
-          return {
-            formatted: fallbackBalance,
-            raw: { low: '0', high: '0' },
-            isRealData: false
-          };
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1000));
+          if (!this.catContract.balance_of) {
+            throw new Error('balance_of function not found in contract');
+          }
+          
+          const result = await this.catContract.balance_of(address);
+          console.log('🔍 Raw balance response:', result);
+          
+          return result;
+        },
+        'Get CAT Balance',
+        2
+      );
+      
+      const validatedBalance = this.validateContractResponse(balance, 'CAT');
+      if (!validatedBalance) {
+        throw new Error('Invalid CAT balance response format');
       }
+      
+      const formatted = parseTokenAmount(
+        validatedBalance.low, 
+        validatedBalance.high, 
+        CONTRACT_CONFIG.decimals
+      );
+      
+      const formattedWithCommas = formatNumberWithCommas(formatted);
+      
+      console.log(`✅ CAT balance retrieved: ${formattedWithCommas}`);
+      
+      return {
+        formatted: formattedWithCommas,
+        raw: validatedBalance,
+        isRealData: true
+      };
+    } catch (error) {
+      console.error(`❌ Error getting CAT balance:`, error);
+      
+      // Return development mock data or zero balance
+      const mockBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} CAT balance: ${mockBalance}`);
+      
+      return {
+        formatted: mockBalance,
+        raw: { low: process.env.NODE_ENV === 'development' ? '1250500000000000000000' : '0', high: '0' },
+        isRealData: false
+      };
     }
-    
-    throw new Error('Failed to get CAT balance after all retries');
   }
 
   async getStrkBalance(address: string): Promise<TokenBalance> {
-    const maxRetries = 2;
-    let retries = 0;
+    console.log(`💎 Fetching STRK balance for ${address}`);
     
-    while (retries < maxRetries) {
-      try {
-        console.log(`💎 Fetching STRK balance for ${address} (attempt ${retries + 1}/${maxRetries})`);
-        
-        const balance = await this.strkContract.balance_of(address);
-        console.log('🔍 Raw STRK balance response:', balance);
-        
-        const validatedBalance = this.validateContractResponse(balance, 'STRK');
-        if (!validatedBalance) {
-          throw new Error('Invalid STRK balance response format');
-        }
-        
-        const formatted = parseTokenAmount(
-          validatedBalance.low, 
-          validatedBalance.high, 
-          STRK_TOKEN_CONFIG.decimals
-        );
-        
-        const formattedWithCommas = formatNumberWithCommas(formatted);
-        
-        console.log(`✅ STRK balance retrieved: ${formattedWithCommas}`);
-        
-        return {
-          formatted: formattedWithCommas,
-          raw: validatedBalance,
-          isRealData: true
-        };
-      } catch (error) {
-        retries++;
-        console.error(`❌ Error getting STRK balance (attempt ${retries}):`, error);
-        
-        if (retries >= maxRetries) {
-          const fallbackBalance = '0';
-          console.log(`🔄 Using fallback STRK balance: ${fallbackBalance}`);
-          
-          return {
-            formatted: fallbackBalance,
-            raw: { low: '0', high: '0' },
-            isRealData: false
-          };
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1500 * retries));
+    try {
+      const balance = await this.executeWithRetry(
+        async () => {
+          console.log('📞 Calling STRK balance_of function...');
+          const result = await this.strkContract.balance_of(address);
+          console.log('🔍 Raw STRK balance response:', result);
+          return result;
+        },
+        'Get STRK Balance',
+        2
+      );
+      
+      const validatedBalance = this.validateContractResponse(balance, 'STRK');
+      if (!validatedBalance) {
+        throw new Error('Invalid STRK balance response format');
       }
+      
+      const formatted = parseTokenAmount(
+        validatedBalance.low, 
+        validatedBalance.high, 
+        STRK_TOKEN_CONFIG.decimals
+      );
+      
+      const formattedWithCommas = formatNumberWithCommas(formatted);
+      
+      console.log(`✅ STRK balance retrieved: ${formattedWithCommas}`);
+      
+      return {
+        formatted: formattedWithCommas,
+        raw: validatedBalance,
+        isRealData: true
+      };
+    } catch (error) {
+      console.error(`❌ Error getting STRK balance:`, error);
+      
+      const mockBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} STRK balance: ${mockBalance}`);
+      
+      return {
+        formatted: mockBalance,
+        raw: { low: process.env.NODE_ENV === 'development' ? '45750000000000000000' : '0', high: '0' },
+        isRealData: false
+      };
     }
-    
-    throw new Error('Failed to get STRK balance after all retries');
   }
 
   async getAllBalances(address: string): Promise<MultiTokenBalance> {

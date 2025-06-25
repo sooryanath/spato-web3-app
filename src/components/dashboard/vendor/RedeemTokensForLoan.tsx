@@ -3,15 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Banknote, AlertCircle, CheckCircle } from "lucide-react";
+import { Banknote, AlertCircle, CheckCircle, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
 
+// Bank wallet address for token redemption
+const BANK_WALLET_ADDRESS = "0x049D0D22Bba512f6A011cA4d461bAFE27349651d104bBEbDfd24233814Ca04E2";
+
 const RedeemTokensForLoan = () => {
   const [amount, setAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const { balance, isConnected } = useWeb3();
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const { balance, isConnected, transferTokens, refreshBalance } = useWeb3();
   const { toast } = useToast();
 
   const handleRedeem = async () => {
@@ -24,22 +28,55 @@ const RedeemTokensForLoan = () => {
       return;
     }
 
+    const requestedAmount = parseFloat(amount);
+    const availableBalance = parseFloat(balance.replace(/,/g, '')) || 0;
+
+    if (requestedAmount > availableBalance) {
+      toast({
+        title: "Insufficient Balance",
+        description: "You don't have enough CAT tokens for this redemption",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
+    setTransactionHash(null);
     
     try {
-      // Simulate loan redemption process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log(`🏦 Redeeming ${amount} CAT tokens to bank wallet: ${BANK_WALLET_ADDRESS}`);
+      
+      const result = await transferTokens(BANK_WALLET_ADDRESS, amount);
+      
+      setTransactionHash(result.transactionHash);
       
       toast({
-        title: "Loan Redeemed Successfully",
-        description: `${amount} CAT tokens redeemed for loan payment`,
+        title: "Redemption Initiated",
+        description: `${amount} CAT tokens are being transferred to the bank for loan payment`,
       });
       
+      // Refresh balance after successful transfer
+      setTimeout(() => {
+        refreshBalance();
+      }, 3000);
+      
       setAmount("");
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Token redemption failed:', error);
+      
+      let errorMessage = "Unable to process loan redemption. Please try again.";
+      
+      if (error.message?.includes('insufficient balance')) {
+        errorMessage = "Insufficient balance to complete this redemption.";
+      } else if (error.message?.includes('User rejected')) {
+        errorMessage = "Transaction was rejected by user.";
+      } else if (error.message?.includes('network')) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      }
+      
       toast({
         title: "Redemption Failed",
-        description: "Unable to process loan redemption. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -101,12 +138,31 @@ const RedeemTokensForLoan = () => {
           )}
         </div>
         
+        <div className="space-y-2">
+          <div className="text-sm text-gray-600">
+            <span className="font-medium">Bank Wallet:</span>
+            <div className="mt-1 p-2 bg-gray-50 rounded text-xs font-mono break-all">
+              {BANK_WALLET_ADDRESS}
+            </div>
+          </div>
+          
+          {transactionHash && (
+            <div className="text-sm text-gray-600">
+              <span className="font-medium">Transaction:</span>
+              <div className="mt-1 p-2 bg-blue-50 rounded text-xs font-mono break-all flex items-center justify-between">
+                <span>{transactionHash}</span>
+                <ExternalLink className="w-3 h-3 text-blue-600 ml-2 flex-shrink-0" />
+              </div>
+            </div>
+          )}
+        </div>
+        
         <Button
           onClick={handleRedeem}
           disabled={!isConnected || !isValidAmount || isProcessing}
           className="w-full bg-green-600 hover:bg-green-700"
         >
-          {isProcessing ? "Processing..." : "Redeem for Loan Payment"}
+          {isProcessing ? "Processing Redemption..." : "Redeem for Loan Payment"}
         </Button>
         
         {!isConnected && (

@@ -1,15 +1,16 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+import { Card, CardContent } from "@/components/ui/card";
 import { ToastAction } from "@/components/ui/toast";
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Coins, AlertCircle, CheckCircle, Info, ExternalLink } from "lucide-react";
-import { formatAddress } from "@/utils/walletUtils";
+import { ExternalLink } from "lucide-react";
 import { useTokenHistory } from "@/contexts/TokenHistoryContext";
+import TokenIssueFormHeader from "./token-issue/TokenIssueFormHeader";
+import CompanySelector from "./token-issue/CompanySelector";
+import TokenAmountInput from "./token-issue/TokenAmountInput";
+import IssueTokenButton from "./token-issue/IssueTokenButton";
+import ConnectionWarning from "./token-issue/ConnectionWarning";
 
 // Registered anchor company address that is authorized to receive minted tokens
 const REGISTERED_ANCHOR_ADDRESS = "0x064cea2cbf17fc72da230689dd4beccf81d3e9e1ff308ea9d72179a0dd27ed78";
@@ -134,109 +135,30 @@ const IssueTokensForm = () => {
 
   return (
     <Card className={isConnected ? "border-green-200" : "border-gray-200"}>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Coins className="w-5 h-5 text-blue-600" />
-            <span>Issue CAT Tokens</span>
-          </div>
-          {isConnected && (
-            <div className="flex items-center space-x-1 text-xs text-green-600">
-              <CheckCircle className="w-3 h-3" />
-              <span>Ready</span>
-            </div>
-          )}
-        </CardTitle>
-        {isConnected && walletAddress && (
-          <div className="space-y-2">
-            <p className="text-xs text-gray-600">
-              Issuing from: {formatAddress(walletAddress)}
-            </p>
-            <div className="flex items-center space-x-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-              <Info className="w-4 h-4 text-blue-600" />
-              <p className="text-xs text-blue-700">
-                Tokens will be minted to the registered anchor company
-              </p>
-            </div>
-            <div className="p-2 bg-gray-50 border border-gray-200 rounded-md">
-              <p className="text-xs text-gray-600 font-medium">Anchor Company Address:</p>
-              <p className="text-xs font-mono text-gray-800 break-all">
-                {formatAddress(REGISTERED_ANCHOR_ADDRESS)}
-              </p>
-            </div>
-          </div>
-        )}
-      </CardHeader>
+      <TokenIssueFormHeader 
+        isConnected={isConnected}
+        walletAddress={walletAddress}
+        registeredAnchorAddress={REGISTERED_ANCHOR_ADDRESS}
+      />
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="company">Company *</Label>
-            <Select value={company} onValueChange={setCompany}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select company" />
-              </SelectTrigger>
-              <SelectContent>
-                {companies.map((comp) => (
-                  <SelectItem key={comp.id} value={comp.id}>
-                    <div className="font-medium">{comp.name}</div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {company && (
-              <div className="flex items-center space-x-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <p className="text-xs text-green-700">
-                  Tokens will be minted for this company via the registered anchor
-                </p>
-              </div>
-            )}
-          </div>
+          <CompanySelector 
+            company={company}
+            onCompanyChange={setCompany}
+            companies={companies}
+          />
           
-          <div className="space-y-2">
-            <Label htmlFor="amount">Token Amount *</Label>
-            <Input
-              id="amount"
-              type="number"
-              placeholder="Enter amount (e.g., 1000)"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              min="0"
-              step="1"
-            />
-            {amount && (
-              <p className="text-xs text-gray-600">
-                Issuing {amount} CAT tokens
-              </p>
-            )}
-          </div>
+          <TokenAmountInput 
+            amount={amount}
+            onAmountChange={setAmount}
+          />
           
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={!isConnected || isIssuing}
-          >
-            {isIssuing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Minting Tokens...
-              </>
-            ) : (
-              <>
-                <Coins className="mr-2 h-4 w-4" />
-                Issue Tokens
-              </>
-            )}
-          </Button>
+          <IssueTokenButton 
+            isConnected={isConnected}
+            isIssuing={isIssuing}
+          />
           
-          {!isConnected && (
-            <div className="flex items-center space-x-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-              <AlertCircle className="w-4 h-4 text-amber-600" />
-              <p className="text-sm text-amber-700">
-                Connect your StarkNet wallet to issue tokens
-              </p>
-            </div>
-          )}
+          <ConnectionWarning isConnected={isConnected} />
         </form>
       </CardContent>
     </Card>

@@ -3,6 +3,9 @@ import BankDashboardHeader from "@/components/dashboard/BankDashboardHeader";
 import MetricsCards from "@/components/dashboard/MetricsCards";
 import IssueTokensForm from "@/components/dashboard/IssueTokensForm";
 import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import CATRequestsTable from "@/components/dashboard/CATRequestsTable";
+import ActiveLoansTable from "@/components/dashboard/ActiveLoansTable";
+import DisputedLoansTable from "@/components/dashboard/DisputedLoansTable";
 import { Web3Provider } from "@/contexts/Web3Context";
 import { TokenHistoryProvider } from "@/contexts/TokenHistoryContext";
 
@@ -24,6 +27,13 @@ const BankDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
               <IssueTokensForm />
               <RecentTransactions />
+            </div>
+            
+            {/* New sections */}
+            <div className="mt-8 space-y-8">
+              <CATRequestsTable />
+              <ActiveLoansTable />
+              <DisputedLoansTable />
             </div>
           </div>
         </div>

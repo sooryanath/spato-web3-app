@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileText, Upload, X } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyDashboard } from '@/contexts/CompanyDashboardContext';
+import { useGlobalTransactions } from '@/contexts/GlobalTransactionContext';
 
 const RequestCATTokens = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const RequestCATTokens = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { addCATRequest } = useCompanyDashboard();
+  const { addTransaction } = useGlobalTransactions();
 
   const purposes = [
     'Working Capital',
@@ -72,11 +74,25 @@ const RequestCATTokens = () => {
     setIsSubmitting(true);
 
     try {
-      // Add to context
+      // Add to company dashboard context
       addCATRequest({
         amount: formData.amount,
         purpose: formData.purpose,
         documents: formData.documents
+      });
+
+      // Add to global transactions context for both dashboards
+      addTransaction({
+        type: 'token_issue',
+        amount: `₹${formData.amount}`,
+        from: 'TechCorp Industries',
+        to: 'HDFC Bank',
+        company: 'TechCorp Industries',
+        purpose: `CAT Request - ${formData.purpose}`,
+        status: 'Pending',
+        txHash: `CAT-REQ-${Date.now()}`,
+        tokenType: 'CAT Request',
+        recipient: 'HDFC Bank'
       });
 
       toast({

@@ -2,12 +2,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpRight, ArrowDownLeft, Clock } from "lucide-react";
+import { ArrowUpRight, ArrowDownLeft, Clock, FileText } from "lucide-react";
 import { useCompanyDashboard } from '@/contexts/CompanyDashboardContext';
+import { useGlobalTransactions } from '@/contexts/GlobalTransactionContext';
 import AllTransactionsModal from './AllTransactionsModal';
 
 const RecentTokenTransfers = () => {
   const { tokenTransfers, tokensReceived } = useCompanyDashboard();
+  const { getTransactionsByCompany } = useGlobalTransactions();
+
+  // Get CAT requests from global transactions
+  const companyTransactions = getTransactionsByCompany('TechCorp Industries');
+  const catRequests = companyTransactions
+    .filter(tx => tx.type === 'token_issue' && tx.purpose.includes('CAT Request'))
+    .slice(0, 2);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -33,7 +41,9 @@ const RecentTokenTransfers = () => {
       <p className="text-sm">
         {type === 'token transfers' 
           ? 'Transfers will appear here after you send tokens to vendors'
-          : 'Received tokens will appear here after the bank issues tokens to your company'
+          : type === 'tokens received'
+          ? 'Received tokens will appear here after the bank issues tokens to your company'
+          : 'CAT requests will appear here after you submit token requests'
         }
       </p>
     </div>
@@ -46,13 +56,13 @@ const RecentTokenTransfers = () => {
           <div className="flex items-center justify-between mb-2">
             <div>
               <p className="font-medium text-gray-900">
-                {isReceived ? transaction.from : transaction.vendor}
+                {isReceived ? (transaction.from || transaction.vendor) : (transaction.vendor || transaction.to)}
               </p>
               <p className="text-sm text-gray-500">{transaction.purpose}</p>
             </div>
             <div className="text-right">
               <p className={`font-semibold ${isReceived ? 'text-blue-600' : 'text-green-600'}`}>
-                {transaction.amount} CAT
+                {transaction.amount} {transaction.amount.includes('₹') ? '' : 'CAT'}
               </p>
               <Badge className={getStatusColor(transaction.status)}>
                 {transaction.status}
@@ -71,6 +81,34 @@ const RecentTokenTransfers = () => {
     </div>
   );
 
+  const CATRequestsList = ({ requests }: { requests: any[] }) => (
+    <div className="space-y-4">
+      {requests.map((request) => (
+        <div key={request.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="font-medium text-gray-900">{request.to}</p>
+              <p className="text-sm text-gray-500">{request.purpose}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-semibold text-blue-600">{request.amount}</p>
+              <Badge className={getStatusColor(request.status)}>
+                {request.status}
+              </Badge>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1 text-xs text-gray-500">
+              <Clock className="w-3 h-3" />
+              <span>{request.date} at {request.time}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -81,7 +119,7 @@ const RecentTokenTransfers = () => {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="received" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="received" className="flex items-center space-x-2">
               <ArrowDownLeft className="w-4 h-4" />
               <span>Received</span>
@@ -89,6 +127,10 @@ const RecentTokenTransfers = () => {
             <TabsTrigger value="sent" className="flex items-center space-x-2">
               <ArrowUpRight className="w-4 h-4" />
               <span>Sent</span>
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="flex items-center space-x-2">
+              <FileText className="w-4 h-4" />
+              <span>Requests</span>
             </TabsTrigger>
           </TabsList>
           
@@ -105,6 +147,14 @@ const RecentTokenTransfers = () => {
               <EmptyState type="token transfers" icon={ArrowUpRight} />
             ) : (
               <TransactionList transactions={recentTransfers} isReceived={false} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="requests" className="mt-4">
+            {catRequests.length === 0 ? (
+              <EmptyState type="CAT requests" icon={FileText} />
+            ) : (
+              <CATRequestsList requests={catRequests} />
             )}
           </TabsContent>
         </Tabs>

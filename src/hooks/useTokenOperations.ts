@@ -28,13 +28,13 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
       }));
       
       console.log('✅ Token balances refreshed successfully:', {
-        CAT: `${balances.cat.formatted} (numeric: ${balances.cat.numericValue})`,
-        STRK: `${balances.strk.formatted} (numeric: ${balances.strk.numericValue})`
+        CAT: `${balances.cat.formatted} (numeric: ${balances.cat.numericValue}, real: ${balances.cat.isRealData})`,
+        STRK: `${balances.strk.formatted} (numeric: ${balances.strk.numericValue}, real: ${balances.strk.isRealData})`
       });
     } catch (error) {
       console.error('❌ Error refreshing balances:', error);
       
-      // Set fallback balances on error
+      // Set fallback balances on error - use more realistic values in development
       const fallbackCat = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
       const fallbackStrk = process.env.NODE_ENV === 'development' ? '45.75' : '0';
       
@@ -126,13 +126,13 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
       }));
       
       console.log('✅ Token balances initialized:', {
-        CAT: `${balances.cat.formatted} (numeric: ${balances.cat.numericValue})`,
-        STRK: `${balances.strk.formatted} (numeric: ${balances.strk.numericValue})`
+        CAT: `${balances.cat.formatted} (numeric: ${balances.cat.numericValue}, real: ${balances.cat.isRealData})`,
+        STRK: `${balances.strk.formatted} (numeric: ${balances.strk.numericValue}, real: ${balances.strk.isRealData})`
       });
     } catch (error) {
       console.error('❌ Error initializing token balances:', error);
       
-      // Set environment-specific fallback balances
+      // Set environment-specific fallback balances with more realistic development values
       const fallbackCat = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
       const fallbackStrk = process.env.NODE_ENV === 'development' ? '45.75' : '0';
       

@@ -62,6 +62,19 @@ export class TokenService {
       return null;
     }
 
+    // Handle direct number values (common in mock/test environments)
+    if (typeof response === 'number') {
+      const value = response.toString();
+      console.log(`✅ ${tokenSymbol} response is direct number: ${value}`);
+      return { low: value, high: '0' };
+    }
+
+    // Handle string values that represent numbers
+    if (typeof response === 'string' && !isNaN(Number(response))) {
+      console.log(`✅ ${tokenSymbol} response is string number: ${response}`);
+      return { low: response, high: '0' };
+    }
+
     // Handle u256 response format (low, high)
     if (response.low !== undefined && response.high !== undefined) {
       console.log(`✅ ${tokenSymbol} response has low/high format`);
@@ -80,8 +93,17 @@ export class TokenService {
       };
     }
 
+    // Handle array format with single value
+    if (Array.isArray(response) && response.length === 1) {
+      console.log(`✅ ${tokenSymbol} response is array with single value: ${response[0]}`);
+      return {
+        low: response[0].toString(),
+        high: '0'
+      };
+    }
+
     // Handle nested value structure
-    if (typeof response === 'object' && response.value) {
+    if (typeof response === 'object' && response.value !== undefined) {
       console.log(`🔍 ${tokenSymbol} response has nested value structure`);
       if (response.value.low !== undefined && response.value.high !== undefined) {
         return {
@@ -89,20 +111,30 @@ export class TokenService {
           high: response.value.high.toString()
         };
       }
+      // Handle single nested value
+      if (typeof response.value === 'number' || typeof response.value === 'string') {
+        return {
+          low: response.value.toString(),
+          high: '0'
+        };
+      }
     }
 
-    // Handle single value (treat as low with high = 0)
-    if (typeof response === 'string' || typeof response === 'number') {
-      console.log(`✅ ${tokenSymbol} response is single value: ${response}`);
-      return {
-        low: response.toString(),
-        high: '0'
-      };
-    }
-
-    // Handle BigNumber or similar objects
+    // Handle BigNumber or similar objects with toString method
     if (response.toString && typeof response.toString === 'function') {
-      console.log(`✅ ${tokenSymbol} response has toString method`);
+      const stringValue = response.toString();
+      if (!isNaN(Number(stringValue))) {
+        console.log(`✅ ${tokenSymbol} response converted via toString: ${stringValue}`);
+        return {
+          low: stringValue,
+          high: '0'
+        };
+      }
+    }
+
+    // Handle BigInt values
+    if (typeof response === 'bigint') {
+      console.log(`✅ ${tokenSymbol} response is BigInt: ${response.toString()}`);
       return {
         low: response.toString(),
         high: '0'
@@ -288,7 +320,7 @@ export class TokenService {
     console.log(`💰 Fetching CAT balance for ${address}`);
     
     try {
-      // Enhanced balance retrieval with better error handling
+      // Enhanced balance retrieval with improved error handling and response parsing
       const balance = await this.executeWithRetry(
         async () => {
           console.log('📞 Calling balance_of function...');
@@ -308,7 +340,27 @@ export class TokenService {
       
       const validatedBalance = this.validateContractResponse(balance, 'CAT');
       if (!validatedBalance) {
-        throw new Error('Invalid CAT balance response format');
+        console.warn('⚠️ Invalid CAT balance response, trying alternative parsing...');
+        
+        // Try alternative parsing for edge cases
+        if (balance !== null && balance !== undefined) {
+          const fallbackValue = String(balance);
+          if (!isNaN(Number(fallbackValue))) {
+            console.log(`🔄 Using fallback parsing: ${fallbackValue}`);
+            const formatted = parseTokenAmount(fallbackValue, '0', CONTRACT_CONFIG.decimals);
+            const formattedWithCommas = formatNumberWithCommas(formatted);
+            const numericValue = this.parseBalanceToNumber(formattedWithCommas);
+            
+            return {
+              formatted: formattedWithCommas,
+              raw: { low: fallbackValue, high: '0' },
+              isRealData: true,
+              numericValue
+            };
+          }
+        }
+        
+        throw new Error('Unable to parse CAT balance response');
       }
       
       const formatted = parseTokenAmount(
@@ -331,7 +383,8 @@ export class TokenService {
     } catch (error) {
       console.error(`❌ Error getting CAT balance:`, error);
       
-      // Return development mock data or zero balance
+      // In development, provide a realistic mock balance for testing
+      // In production, return zero to indicate no balance available
       const mockBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
       const numericValue = this.parseBalanceToNumber(mockBalance);
       
@@ -363,7 +416,27 @@ export class TokenService {
       
       const validatedBalance = this.validateContractResponse(balance, 'STRK');
       if (!validatedBalance) {
-        throw new Error('Invalid STRK balance response format');
+        console.warn('⚠️ Invalid STRK balance response, trying alternative parsing...');
+        
+        // Try alternative parsing for edge cases
+        if (balance !== null && balance !== undefined) {
+          const fallbackValue = String(balance);
+          if (!isNaN(Number(fallbackValue))) {
+            console.log(`🔄 Using STRK fallback parsing: ${fallbackValue}`);
+            const formatted = parseTokenAmount(fallbackValue, '0', STRK_TOKEN_CONFIG.decimals);
+            const formattedWithCommas = formatNumberWithCommas(formatted);
+            const numericValue = this.parseBalanceToNumber(formattedWithCommas);
+            
+            return {
+              formatted: formattedWithCommas,
+              raw: { low: fallbackValue, high: '0' },
+              isRealData: true,
+              numericValue
+            };
+          }
+        }
+        
+        throw new Error('Unable to parse STRK balance response');
       }
       
       const formatted = parseTokenAmount(

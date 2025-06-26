@@ -6,6 +6,7 @@ import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalLink } from "lucide-react";
 import { useTokenHistory } from "@/contexts/TokenHistoryContext";
+import { useGlobalTransactions } from "@/contexts/GlobalTransactionContext";
 import TokenIssueFormHeader from "./token-issue/TokenIssueFormHeader";
 import CompanySelector from "./token-issue/CompanySelector";
 import TokenAmountInput from "./token-issue/TokenAmountInput";
@@ -21,6 +22,7 @@ const IssueTokensForm = () => {
   const { isConnected, walletAddress, issueTokens, isIssuing } = useWeb3();
   const { toast } = useToast();
   const { addRecord } = useTokenHistory();
+  const { addTransaction } = useGlobalTransactions();
 
   const companies = [
     { id: "techcorp", name: "TechCorp Ltd" },
@@ -73,8 +75,9 @@ const IssueTokensForm = () => {
       // Always use the registered anchor company address for minting
       const result = await issueTokens(REGISTERED_ANCHOR_ADDRESS, amount);
       
-      // Add record to token history immediately
       const selectedCompany = companies.find(c => c.id === company);
+      
+      // Add record to token history immediately
       addRecord({
         company: selectedCompany?.name || 'Unknown Company',
         amount: numAmount.toLocaleString(),
@@ -85,6 +88,23 @@ const IssueTokensForm = () => {
         tokenType: 'CAT',
         recipient: REGISTERED_ANCHOR_ADDRESS,
         purpose: 'Working Capital'
+      });
+      
+      // Add to global transaction context
+      addTransaction({
+        type: 'token_issue',
+        amount: numAmount.toLocaleString(),
+        from: 'HDFC Bank',
+        to: selectedCompany?.name || 'Unknown Company',
+        company: selectedCompany?.name || 'Unknown Company',
+        purpose: 'Working Capital',
+        status: 'Confirmed',
+        txHash: result.transactionHash,
+        blockNumber: result.blockNumber || 'Pending',
+        gasUsed: '21,000',
+        gasPrice: '0.0001 ETH',
+        tokenType: 'CAT',
+        recipient: REGISTERED_ANCHOR_ADDRESS
       });
       
       toast({

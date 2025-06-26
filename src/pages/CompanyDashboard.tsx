@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Web3Provider } from '@/contexts/Web3Context';
 import { TokenHistoryProvider } from '@/contexts/TokenHistoryContext';
 import { CompanyDashboardProvider } from '@/contexts/CompanyDashboardContext';
+import { GlobalTransactionProvider } from '@/contexts/GlobalTransactionContext';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import CompanyMetricsCards from '@/components/dashboard/company/CompanyMetricsCards';
 import TokenTransferForm from '@/components/dashboard/company/TokenTransferForm';
@@ -63,42 +64,44 @@ const CompanyDashboard = () => {
   }
 
   return (
-    <Web3Provider>
-      <TokenHistoryProvider>
-        <CompanyDashboardProvider>
-          <div className="min-h-screen bg-gray-50">
-            <CompanyDashboardHeader />
-            
-            <div className="container mx-auto px-4 py-8 space-y-8">
-              {/* Metrics Overview */}
-              <CompanyMetricsCards />
+    <GlobalTransactionProvider>
+      <Web3Provider>
+        <TokenHistoryProvider>
+          <CompanyDashboardProvider>
+            <div className="min-h-screen bg-gray-50">
+              <CompanyDashboardHeader />
               
-              {/* Main Content Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Left Column */}
-                <div className="space-y-8">
-                  <WalletConnectionCard />
-                  <VendorOverview />
-                  <ActiveVendors />
-                </div>
+              <div className="container mx-auto px-4 py-8 space-y-8">
+                {/* Metrics Overview */}
+                <CompanyMetricsCards />
                 
-                {/* Middle Column */}
-                <div className="space-y-8">
-                  <TokenTransferForm />
-                  <RequestCATTokens />
-                </div>
-                
-                {/* Right Column */}
-                <div className="space-y-8">
-                  <RecentTokenTransfers />
-                  <DisputeResolution />
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                  {/* Left Column */}
+                  <div className="space-y-8">
+                    <WalletConnectionCard />
+                    <VendorOverview />
+                    <ActiveVendors />
+                  </div>
+                  
+                  {/* Middle Column */}
+                  <div className="space-y-8">
+                    <TokenTransferForm />
+                    <RequestCATTokens />
+                  </div>
+                  
+                  {/* Right Column */}
+                  <div className="space-y-8">
+                    <RecentTokenTransfers />
+                    <DisputeResolution />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </CompanyDashboardProvider>
-      </TokenHistoryProvider>
-    </Web3Provider>
+          </CompanyDashboardProvider>
+        </TokenHistoryProvider>
+      </Web3Provider>
+    </GlobalTransactionProvider>
   );
 };
 

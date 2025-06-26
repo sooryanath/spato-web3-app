@@ -1,5 +1,6 @@
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { useGlobalTransactions } from './GlobalTransactionContext';
 
 export interface TokenTransfer {
   id: string;
@@ -67,6 +68,8 @@ export const useCompanyDashboard = () => {
 };
 
 export const CompanyDashboardProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { getTransactionsByCompany } = useGlobalTransactions();
+  
   // Mock initial data
   const [tokenTransfers, setTokenTransfers] = useState<TokenTransfer[]>([
     {
@@ -124,6 +127,34 @@ export const CompanyDashboardProvider: React.FC<{ children: ReactNode }> = ({ ch
       contractDate: "2024-01-08"
     }
   ]);
+
+  // Sync with global transactions for TechCorp Ltd
+  useEffect(() => {
+    const globalTransactions = getTransactionsByCompany('TechCorp Ltd');
+    
+    // Convert global transactions to tokens received
+    const newTokensReceived = globalTransactions
+      .filter(tx => tx.type === 'token_issue' && tx.to === 'TechCorp Ltd')
+      .map(tx => ({
+        id: tx.id,
+        from: tx.from,
+        amount: tx.amount,
+        purpose: tx.purpose,
+        date: tx.date,
+        time: tx.time,
+        status: tx.status,
+        txHash: tx.txHash,
+        type: 'received' as const
+      }));
+
+    if (newTokensReceived.length > 0) {
+      setTokensReceived(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const uniqueNew = newTokensReceived.filter(t => !existingIds.has(t.id));
+        return [...uniqueNew, ...prev];
+      });
+    }
+  }, [getTransactionsByCompany]);
 
   const addTokenTransfer = useCallback((transfer: Omit<TokenTransfer, 'id' | 'date' | 'time' | 'status' | 'type'>) => {
     const newTransfer: TokenTransfer = {

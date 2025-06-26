@@ -1,41 +1,53 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowUpRight, ArrowDownLeft, Clock, FileText } from "lucide-react";
-import { useCompanyDashboard } from '@/contexts/CompanyDashboardContext';
-import { useGlobalTransactions } from '@/contexts/GlobalTransactionContext';
-import AllTransactionsModal from './AllTransactionsModal';
+import { Button } from "@/components/ui/button";
+import { ArrowUpRight, ExternalLink, Clock } from "lucide-react";
 
 const RecentTokenTransfers = () => {
-  const { tokenTransfers, tokensReceived } = useCompanyDashboard();
-  const { getTransactionsByCompany } = useGlobalTransactions();
-
-  // Get all transactions for TechCorp Industries
-  const companyTransactions = getTransactionsByCompany('TechCorp Industries');
-  
-  // Get CAT requests from global transactions
-  const catRequests = companyTransactions
-    .filter(tx => tx.type === 'token_issue' && tx.purpose.includes('CAT Request'))
-    .slice(0, 2);
-
-  // Get token issuances from bank (received tokens)
-  const bankIssuedTokens = companyTransactions
-    .filter(tx => tx.type === 'token_issue' && tx.from === 'HDFC Bank' && !tx.purpose.includes('CAT Request'))
-    .map(tx => ({
-      id: tx.id,
-      from: tx.from,
-      vendor: tx.from,
-      to: tx.to,
-      amount: tx.amount,
-      purpose: tx.purpose,
-      date: tx.date,
-      time: tx.time,
-      status: tx.status
-    }));
-
-  // Combine tokens received from context and bank issued tokens
-  const allTokensReceived = [...tokensReceived, ...bankIssuedTokens].slice(0, 4);
+  // Mock transfer data
+  const recentTransfers = [
+    {
+      id: 1,
+      vendor: "ABC Manufacturing Ltd",
+      amount: "25,000",
+      purpose: "Raw Materials",
+      date: "2024-01-15",
+      time: "14:30",
+      status: "Confirmed",
+      txHash: "0x1234...abcd"
+    },
+    {
+      id: 2,
+      vendor: "XYZ Logistics Co",
+      amount: "15,000",
+      purpose: "Logistics & Shipping",
+      date: "2024-01-15",
+      time: "11:45",
+      status: "Confirmed",
+      txHash: "0x2345...bcde"
+    },
+    {
+      id: 3,
+      vendor: "Tech Solutions Inc",
+      amount: "35,000",
+      purpose: "Consulting Services",
+      date: "2024-01-14",
+      time: "16:20",
+      status: "Pending",
+      txHash: "0x3456...cdef"
+    },
+    {
+      id: 4,
+      vendor: "Global Supplies Corp",
+      amount: "20,000",
+      purpose: "Equipment Purchase",
+      date: "2024-01-14",
+      time: "09:15",
+      status: "Confirmed",
+      txHash: "0x4567...def0"
+    }
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -50,136 +62,61 @@ const RecentTokenTransfers = () => {
     }
   };
 
-  // Show recent 4 transfers and received
-  const recentTransfers = tokenTransfers.slice(0, 4);
-
-  const EmptyState = ({ type, icon: Icon }: { type: string; icon: any }) => (
-    <div className="text-center py-8 text-gray-500">
-      <Icon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-      <p>No {type} yet</p>
-      <p className="text-sm">
-        {type === 'token transfers' 
-          ? 'Transfers will appear here after you send tokens to vendors'
-          : type === 'tokens received'
-          ? 'Received tokens will appear here after the bank issues tokens to your company'
-          : 'CAT requests will appear here after you submit token requests'
-        }
-      </p>
-    </div>
-  );
-
-  const TransactionList = ({ transactions, isReceived = false }: { transactions: any[]; isReceived?: boolean }) => (
-    <div className="space-y-4">
-      {transactions.map((transaction) => (
-        <div key={transaction.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-medium text-gray-900">
-                {isReceived ? (transaction.from || transaction.vendor) : (transaction.vendor || transaction.to)}
-              </p>
-              <p className="text-sm text-gray-500">{transaction.purpose}</p>
-            </div>
-            <div className="text-right">
-              <p className={`font-semibold ${isReceived ? 'text-blue-600' : 'text-green-600'}`}>
-                {transaction.amount} {transaction.amount.includes('₹') ? '' : 'CAT'}
-              </p>
-              <Badge className={getStatusColor(transaction.status)}>
-                {transaction.status}
-              </Badge>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 text-xs text-gray-500">
-              <Clock className="w-3 h-3" />
-              <span>{transaction.date} at {transaction.time}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const CATRequestsList = ({ requests }: { requests: any[] }) => (
-    <div className="space-y-4">
-      {requests.map((request) => (
-        <div key={request.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-medium text-gray-900">{request.to}</p>
-              <p className="text-sm text-gray-500">{request.purpose}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold text-blue-600">{request.amount}</p>
-              <Badge className={getStatusColor(request.status)}>
-                {request.status}
-              </Badge>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 text-xs text-gray-500">
-              <Clock className="w-3 h-3" />
-              <span>{request.date} at {request.time}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  const handleViewTransaction = (txHash: string) => {
+    // Open transaction in block explorer
+    const explorerUrl = `https://testnet.starkscan.co/tx/${txHash}`;
+    window.open(explorerUrl, '_blank');
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <ArrowUpRight className="w-5 h-5 text-green-600" />
-          <span>Recent Token Activity</span>
+          <span>Recent Token Transfers</span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="received" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="received" className="flex items-center space-x-2">
-              <ArrowDownLeft className="w-4 h-4" />
-              <span>Received</span>
-            </TabsTrigger>
-            <TabsTrigger value="sent" className="flex items-center space-x-2">
-              <ArrowUpRight className="w-4 h-4" />
-              <span>Sent</span>
-            </TabsTrigger>
-            <TabsTrigger value="requests" className="flex items-center space-x-2">
-              <FileText className="w-4 h-4" />
-              <span>Requests</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="received" className="mt-4">
-            {allTokensReceived.length === 0 ? (
-              <EmptyState type="tokens received" icon={ArrowDownLeft} />
-            ) : (
-              <TransactionList transactions={allTokensReceived} isReceived={true} />
-            )}
-          </TabsContent>
-          
-          <TabsContent value="sent" className="mt-4">
-            {recentTransfers.length === 0 ? (
-              <EmptyState type="token transfers" icon={ArrowUpRight} />
-            ) : (
-              <TransactionList transactions={recentTransfers} isReceived={false} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="requests" className="mt-4">
-            {catRequests.length === 0 ? (
-              <EmptyState type="CAT requests" icon={FileText} />
-            ) : (
-              <CATRequestsList requests={catRequests} />
-            )}
-          </TabsContent>
-        </Tabs>
+      <CardContent className="space-y-4">
+        {recentTransfers.map((transfer) => (
+          <div key={transfer.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="font-medium text-gray-900">{transfer.vendor}</p>
+                <p className="text-sm text-gray-500">{transfer.purpose}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-green-600">
+                  {transfer.amount} CAT
+                </p>
+                <Badge className={getStatusColor(transfer.status)}>
+                  {transfer.status}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-1 text-xs text-gray-500">
+                <Clock className="w-3 h-3" />
+                <span>{transfer.date} at {transfer.time}</span>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleViewTransaction(transfer.txHash)}
+                className="text-xs"
+              >
+                <ExternalLink className="w-3 h-3 mr-1" />
+                View Tx
+              </Button>
+            </div>
+          </div>
+        ))}
         
-        <div className="pt-4 border-t mt-4">
-          <AllTransactionsModal />
+        <div className="pt-4 border-t">
+          <Button variant="outline" className="w-full">
+            View All Transfers
+          </Button>
         </div>
       </CardContent>
     </Card>

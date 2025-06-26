@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Banknote, AlertCircle, CheckCircle, ExternalLink, ShieldAlert, ShieldCh
 import { useState } from "react";
 import { useWeb3 } from "@/contexts/Web3Context";
 import { useToast } from "@/hooks/use-toast";
-import { addressesEqual, normalizeAddress } from "@/utils/addressUtils";
+import { addressesEqual, normalizeAddress, formatAddressForDisplay } from "@/utils/addressUtils";
 
 // Bank wallet address for token redemption
 const BANK_WALLET_ADDRESS = "0x049D0D22Bba512f6A011cA4d461bAFE27349651d104bBEbDfd24233814Ca04E2";
@@ -27,24 +26,6 @@ const RedeemTokensForLoan = () => {
 
   // Check if we're using mock/fallback data
   const isMockData = process.env.NODE_ENV === 'development' && balance === '1,250.50';
-
-  // Enhanced balance parsing with better error handling
-  const parseBalance = (balanceString: string): number => {
-    if (!balanceString) return 0;
-    
-    // Remove commas, currency symbols, and whitespace
-    const cleanString = balanceString.replace(/[,₹$\s]/g, '').trim();
-    const parsed = parseFloat(cleanString);
-    
-    console.log(`💰 Balance parsing: "${balanceString}" -> "${cleanString}" -> ${parsed}`);
-    
-    if (isNaN(parsed)) {
-      console.warn(`⚠️ Failed to parse balance: "${balanceString}"`);
-      return 0;
-    }
-    
-    return parsed;
-  };
 
   const handleRedeem = async () => {
     if (!isConnected) {
@@ -85,20 +66,12 @@ const RedeemTokensForLoan = () => {
     }
 
     const requestedAmount = parseFloat(amount);
-    const availableBalance = parseBalance(balance);
-
-    console.log(`🔍 Balance validation:`, {
-      balanceString: balance,
-      availableBalance,
-      requestedAmount,
-      isSufficient: requestedAmount <= availableBalance
-    });
+    const availableBalance = parseFloat(balance.replace(/,/g, '')) || 0;
 
     if (requestedAmount > availableBalance) {
-      console.error(`❌ Insufficient balance: Available ${availableBalance}, Requested ${requestedAmount}`);
       toast({
         title: "Insufficient Balance",
-        description: `You don't have enough CAT tokens. Available: ${availableBalance}, Requested: ${requestedAmount}`,
+        description: "You don't have enough CAT tokens for this redemption",
         variant: "destructive"
       });
       return;
@@ -139,8 +112,8 @@ const RedeemTokensForLoan = () => {
       if (error.message?.includes('Security violation') || error.message?.includes('Unauthorized wallet')) {
         errorMessage = "Security violation detected. Only authorized vendor wallets can perform redemptions.";
         console.error('🚨 SECURITY ALERT: Unauthorized redemption attempt blocked');
-      } else if (error.message?.includes('Insufficient balance')) {
-        errorMessage = error.message; // Use the detailed error message from the service
+      } else if (error.message?.includes('insufficient balance')) {
+        errorMessage = "Insufficient balance to complete this redemption.";
       } else if (error.message?.includes('User rejected')) {
         errorMessage = "Transaction was rejected by user.";
       } else if (error.message?.includes('network')) {
@@ -157,7 +130,7 @@ const RedeemTokensForLoan = () => {
     }
   };
 
-  const availableBalance = parseBalance(balance);
+  const availableBalance = parseFloat(balance.replace(/,/g, '')) || 0;
   const requestedAmount = parseFloat(amount) || 0;
   const isValidAmount = requestedAmount > 0 && requestedAmount <= availableBalance;
   const canRedeem = isConnected && isCorrectVendorWallet && isValidAmount && !isProcessing;
@@ -218,16 +191,11 @@ const RedeemTokensForLoan = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Available Balance:</span>
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className={`${
-                isMockData ? 'text-blue-700 border-blue-300' : 'text-green-700'
-              }`}>
-                {balance} CAT {isMockData && '(Mock)'}
-              </Badge>
-              <span className="text-xs text-gray-500">
-                (Numeric: {availableBalance})
-              </span>
-            </div>
+            <Badge variant="outline" className={`${
+              isMockData ? 'text-blue-700 border-blue-300' : 'text-green-700'
+            }`}>
+              {balance} CAT {isMockData && '(Mock)'}
+            </Badge>
           </div>
           
           <div className="space-y-2">
@@ -257,7 +225,7 @@ const RedeemTokensForLoan = () => {
                   <AlertCircle className="w-4 h-4 text-red-600" />
                   <span className="text-red-600">
                     {!isCorrectVendorWallet ? "Unauthorized wallet" : 
-                     requestedAmount > availableBalance ? `Insufficient balance (Available: ${availableBalance})` : "Invalid amount"}
+                     requestedAmount > availableBalance ? "Insufficient balance" : "Invalid amount"}
                   </span>
                 </>
               )}

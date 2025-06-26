@@ -1,53 +1,53 @@
 
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const HeroSection = () => {
   return (
-    <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto text-center">
-        {/* Top badge */}
-        <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
-          <svg className="w-4 h-4 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <span className="text-white text-sm font-medium">Next-Generation Financial Infrastructure</span>
-        </div>
-
-        {/* Main heading */}
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400">
-            Deep Tier Financing
-          </span>
-          <br />
-          <span className="text-white">Platform for MSMEs</span>
-        </h1>
-        
-        {/* Subheading */}
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-gray-300 mb-8 leading-relaxed">
-          Quick Working Capital Loans against PO
-        </h2>
-
-        {/* Description */}
-        <p className="text-lg sm:text-xl text-gray-400 mb-12 max-w-4xl mx-auto leading-relaxed">
-          Blockchain-powered tokenization ecosystem connecting Banks, NBFCs, syndicate companies and vendors. Enable efficient deep tier financing with advanced Credit Access Tokens and smart contract automation.
-        </p>
-        
-        {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-          <Link to="/login">
-            <button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-10 py-4 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-purple-500/25 transform hover:scale-105 flex items-center">
-              Launch Platform
-              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </button>
-          </Link>
-          <button className="border-2 border-gray-400 text-gray-300 hover:bg-gray-400 hover:text-gray-900 px-10 py-4 rounded-lg font-semibold text-lg transition-all duration-200">
-            Read Documentation
-          </button>
+    <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <div className="mb-8">
+        <div className="inline-flex items-center px-4 py-2 rounded-full border border-gray-600 text-gray-300 text-sm mb-8 hover:border-purple-400 transition-all duration-300">
+          <span className="mr-2">⚡</span>
+          Next-Generation Financial Infrastructure
         </div>
       </div>
-    </main>
+      
+      <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-8 max-w-6xl leading-tight">
+        <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent">
+          Deep Tier Financing
+        </span>
+        <br />
+        <span className="text-white">Platform for MSMEs</span>
+      </h1>
+      
+      <p className="text-xl md:text-2xl text-gray-300 mb-4 max-w-4xl font-medium">
+        Instant Working Capital Loans for credit vendors
+      </p>
+      
+      <p className="text-lg text-gray-400 mb-12 max-w-4xl leading-relaxed">
+        Blockchain-powered tokenization ecosystem connecting Banks, NBFCs, syndicate companies and vendors. Enable efficient deep tier financing with advanced Credit Access Tokens and smart contract automation.
+      </p>
+      
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <Link to="/login">
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-purple-500/25 flex items-center gap-2"
+          >
+            Launch Platform
+            <ArrowRight className="w-5 h-5" />
+          </Button>
+        </Link>
+        <Link to="/docs">
+          <Button 
+            variant="outline" 
+            className="border-gray-600 text-gray-300 hover:text-white hover:border-white bg-transparent px-8 py-4 rounded-lg text-lg font-semibold transition-all duration-300 hover:scale-105"
+          >
+            Read Documentation
+          </Button>
+        </Link>
+      </div>
+    </div>
   );
 };
 

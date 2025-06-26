@@ -310,9 +310,9 @@ export class TokenService {
     } catch (error) {
       console.error(`❌ Error getting CAT balance:`, error);
       
-      // Return development mock data or zero balance
+      // Fixed fallback logic - use development mock data consistently
       const mockBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
-      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} CAT balance: ${mockBalance}`);
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'development mock' : 'fallback'} CAT balance: ${mockBalance}`);
       
       return {
         formatted: mockBalance,
@@ -360,8 +360,9 @@ export class TokenService {
     } catch (error) {
       console.error(`❌ Error getting STRK balance:`, error);
       
+      // Fixed fallback logic - use development mock data consistently
       const mockBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
-      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} STRK balance: ${mockBalance}`);
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'development mock' : 'fallback'} STRK balance: ${mockBalance}`);
       
       return {
         formatted: mockBalance,
@@ -382,11 +383,19 @@ export class TokenService {
 
       const catResult = catBalance.status === 'fulfilled' 
         ? catBalance.value 
-        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false };
+        : { 
+            formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', 
+            raw: { low: process.env.NODE_ENV === 'development' ? '1250500000000000000000' : '0', high: '0' }, 
+            isRealData: false 
+          };
         
       const strkResult = strkBalance.status === 'fulfilled' 
         ? strkBalance.value 
-        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false };
+        : { 
+            formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', 
+            raw: { low: process.env.NODE_ENV === 'development' ? '45750000000000000000' : '0', high: '0' }, 
+            isRealData: false 
+          };
 
       console.log('✅ All balances retrieved:', {
         CAT: `${catResult.formatted} (${catResult.isRealData ? 'real' : 'fallback'})`,
@@ -400,9 +409,18 @@ export class TokenService {
     } catch (error) {
       console.error('❌ Error getting all balances:', error);
       
+      // Fixed fallback logic - ensure consistent development mock data
       return {
-        cat: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false },
-        strk: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false }
+        cat: { 
+          formatted: process.env.NODE_ENV === 'development' ? '1,250.50' : '0', 
+          raw: { low: process.env.NODE_ENV === 'development' ? '1250500000000000000000' : '0', high: '0' }, 
+          isRealData: false 
+        },
+        strk: { 
+          formatted: process.env.NODE_ENV === 'development' ? '45.75' : '0', 
+          raw: { low: process.env.NODE_ENV === 'development' ? '45750000000000000000' : '0', high: '0' }, 
+          isRealData: false 
+        }
       };
     }
   }

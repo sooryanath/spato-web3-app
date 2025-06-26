@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { TokenService, TokenMintResult } from '@/services/tokenService';
 import { TokenState } from '@/types/web3';
@@ -28,13 +27,13 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
       }));
       
       console.log('✅ Token balances refreshed successfully:', {
-        CAT: balances.cat.formatted,
-        STRK: balances.strk.formatted
+        CAT: `${balances.cat.formatted} (${balances.cat.isRealData ? 'real' : 'fallback'})`,
+        STRK: `${balances.strk.formatted} (${balances.strk.isRealData ? 'real' : 'fallback'})`
       });
     } catch (error) {
       console.error('❌ Error refreshing balances:', error);
       
-      // Set fallback balances on error
+      // Fixed fallback balances - ensure consistent development mock data
       const fallbackCat = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
       const fallbackStrk = process.env.NODE_ENV === 'development' ? '45.75' : '0';
       
@@ -126,13 +125,13 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
       }));
       
       console.log('✅ Token balances initialized:', {
-        CAT: balances.cat.formatted,
-        STRK: balances.strk.formatted
+        CAT: `${balances.cat.formatted} (${balances.cat.isRealData ? 'real' : 'fallback'})`,
+        STRK: `${balances.strk.formatted} (${balances.strk.isRealData ? 'real' : 'fallback'})`
       });
     } catch (error) {
       console.error('❌ Error initializing token balances:', error);
       
-      // Set environment-specific fallback balances
+      // Fixed fallback balances - ensure consistent development mock data
       const fallbackCat = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
       const fallbackStrk = process.env.NODE_ENV === 'development' ? '45.75' : '0';
       

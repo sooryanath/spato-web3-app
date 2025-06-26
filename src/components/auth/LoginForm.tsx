@@ -26,6 +26,33 @@ const LoginForm = () => {
     });
   };
 
+  const getRedirectPath = (email: string, profile: any) => {
+    // If user has a profile with a role, use that
+    if (profile?.role) {
+      switch (profile.role) {
+        case 'bank':
+          return '/bank-dashboard';
+        case 'company':
+          return '/company-dashboard';
+        case 'vendor':
+          return '/vendor-dashboard';
+        default:
+          return '/company-dashboard';
+      }
+    }
+
+    // Fallback to email-based routing for demo accounts
+    if (email.includes("bank@")) {
+      return "/bank-dashboard";
+    } else if (email.includes("finance@")) {
+      return "/company-dashboard";
+    } else if (email.includes("vendor@")) {
+      return "/vendor-dashboard";
+    }
+    
+    return "/company-dashboard"; // Default fallback
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -45,22 +72,16 @@ const LoginForm = () => {
           description: "Logged in successfully!",
         });
 
-        // Redirect to the page they were trying to access, or dashboard based on email
-        const from = location.state?.from?.pathname;
-        if (from) {
-          navigate(from);
-        } else {
-          // Route based on email domain for demo purposes
-          if (formData.email.includes("bank@")) {
-            navigate("/bank-dashboard");
-          } else if (formData.email.includes("finance@")) {
-            navigate("/company-dashboard");
-          } else if (formData.email.includes("vendor@")) {
-            navigate("/vendor-dashboard");
+        // Small delay to allow profile to load
+        setTimeout(() => {
+          const from = location.state?.from?.pathname;
+          if (from) {
+            navigate(from);
           } else {
-            navigate("/company-dashboard"); // Default
+            const redirectPath = getRedirectPath(formData.email, null);
+            navigate(redirectPath);
           }
-        }
+        }, 500);
       }
     } catch (error) {
       toast({
@@ -116,42 +137,56 @@ const LoginForm = () => {
 
       {/* Demo Accounts Section */}
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <div className="text-xs font-medium text-blue-600 mb-3">
-          Demo Accounts (Click to auto-fill):
+        <div className="text-sm font-medium text-blue-700 mb-3">
+          Demo Accounts - Click to Login:
         </div>
         
         <div className="space-y-2">
           <button
             type="button"
             onClick={() => handleDemoCredential("bank@hdfc.com")}
-            className="flex items-center w-full text-left p-2 rounded hover:bg-blue-100 transition-colors"
+            className="flex items-center w-full text-left p-3 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
           >
-            <span className="text-sm mr-2">🏦</span>
-            <span className="text-sm text-blue-700">Bank: bank@hdfc.com</span>
+            <span className="text-lg mr-3">🏦</span>
+            <div>
+              <div className="text-sm font-medium text-blue-800">Bank Dashboard</div>
+              <div className="text-xs text-blue-600">bank@hdfc.com</div>
+            </div>
           </button>
 
           <button
             type="button"
             onClick={() => handleDemoCredential("finance@techcorp.com")}
-            className="flex items-center w-full text-left p-2 rounded hover:bg-blue-100 transition-colors"
+            className="flex items-center w-full text-left p-3 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
           >
-            <span className="text-sm mr-2">🏢</span>
-            <span className="text-sm text-blue-700">Company: finance@techcorp.com</span>
+            <span className="text-lg mr-3">🏢</span>
+            <div>
+              <div className="text-sm font-medium text-blue-800">Company Dashboard</div>
+              <div className="text-xs text-blue-600">finance@techcorp.com</div>
+            </div>
           </button>
 
           <button
             type="button"
             onClick={() => handleDemoCredential("vendor@supplies.com")}
-            className="flex items-center w-full text-left p-2 rounded hover:bg-blue-100 transition-colors"
+            className="flex items-center w-full text-left p-3 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200"
           >
-            <span className="text-sm mr-2">🤝</span>
-            <span className="text-sm text-blue-700">Vendor: vendor@supplies.com</span>
+            <span className="text-lg mr-3">🤝</span>
+            <div>
+              <div className="text-sm font-medium text-blue-800">Vendor Dashboard</div>
+              <div className="text-xs text-blue-600">vendor@supplies.com</div>
+            </div>
           </button>
         </div>
 
-        <p className="text-xs text-blue-600 mt-3">
-          Password for all demo accounts: demo123
-        </p>
+        <div className="mt-4 p-3 bg-blue-100 rounded-lg">
+          <p className="text-xs text-blue-700 font-medium mb-1">
+            🔑 All demo accounts use password: <code className="bg-white px-1 rounded">demo123</code>
+          </p>
+          <p className="text-xs text-blue-600">
+            Click any account above to auto-fill credentials and test the respective dashboard.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -61,6 +61,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const createDemoProfile = async (userId: string, email: string) => {
+    try {
+      let role: 'bank' | 'company' | 'vendor' = 'company';
+      let fullName = '';
+      let companyName = '';
+
+      // Determine role and details based on email
+      if (email.includes('bank@')) {
+        role = 'bank';
+        fullName = 'Bank Manager';
+        companyName = 'HDFC Bank';
+      } else if (email.includes('finance@')) {
+        role = 'company';
+        fullName = 'Finance Manager';
+        companyName = 'TechCorp Inc';
+      } else if (email.includes('vendor@')) {
+        role = 'vendor';
+        fullName = 'Vendor Representative';
+        companyName = 'Supplies Co';
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            email: email,
+            full_name: fullName,
+            role: role,
+            company_name: companyName
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating demo profile:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in createDemoProfile:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -70,9 +117,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
-          setTimeout(() => {
-            fetchProfile(session.user.id);
+          // Fetch user profile with fallback to create demo profile
+          setTimeout(async () => {
+            let existingProfile = null;
+            
+            try {
+              const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              existingProfile = data;
+            } catch (error) {
+              console.log('Profile not found, will create demo profile');
+            }
+
+            if (!existingProfile) {
+              // Create demo profile for demo accounts
+              const email = session.user.email || '';
+              if (email.includes('bank@') || email.includes('finance@') || email.includes('vendor@')) {
+                existingProfile = await createDemoProfile(session.user.id, email);
+              }
+            }
+
+            if (existingProfile) {
+              setProfile(existingProfile);
+            }
           }, 0);
         } else {
           setProfile(null);

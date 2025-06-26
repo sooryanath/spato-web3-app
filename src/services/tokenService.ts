@@ -13,7 +13,7 @@ export interface TokenBalance {
   formatted: string;
   raw: { low: string; high: string };
   isRealData: boolean;
-  numericValue: number; // Add numeric value for easier calculations
+  numericValue: number;
 }
 
 export interface MultiTokenBalance {
@@ -316,11 +316,31 @@ export class TokenService {
     }
   }
 
+  private createFallbackBalance(tokenSymbol: string, mockValue: string): TokenBalance {
+    const numericValue = this.parseBalanceToNumber(mockValue);
+    const rawValue = process.env.NODE_ENV === 'development' 
+      ? (tokenSymbol === 'CAT' ? '1250500000000000000000' : '45750000000000000000')
+      : '0';
+    
+    console.log(`🔄 Creating fallback ${tokenSymbol} balance:`, {
+      formatted: mockValue,
+      numericValue,
+      rawValue,
+      environment: process.env.NODE_ENV
+    });
+    
+    return {
+      formatted: mockValue,
+      raw: { low: rawValue, high: '0' },
+      isRealData: false,
+      numericValue
+    };
+  }
+
   async getBalance(address: string): Promise<TokenBalance> {
     console.log(`💰 Fetching CAT balance for ${address}`);
     
     try {
-      // Enhanced balance retrieval with improved error handling and response parsing
       const balance = await this.executeWithRetry(
         async () => {
           console.log('📞 Calling balance_of function...');
@@ -342,7 +362,6 @@ export class TokenService {
       if (!validatedBalance) {
         console.warn('⚠️ Invalid CAT balance response, trying alternative parsing...');
         
-        // Try alternative parsing for edge cases
         if (balance !== null && balance !== undefined) {
           const fallbackValue = String(balance);
           if (!isNaN(Number(fallbackValue))) {
@@ -383,19 +402,10 @@ export class TokenService {
     } catch (error) {
       console.error(`❌ Error getting CAT balance:`, error);
       
-      // In development, provide a realistic mock balance for testing
-      // In production, return zero to indicate no balance available
       const mockBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
-      const numericValue = this.parseBalanceToNumber(mockBalance);
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} CAT balance: ${mockBalance}`);
       
-      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} CAT balance: ${mockBalance} (numeric: ${numericValue})`);
-      
-      return {
-        formatted: mockBalance,
-        raw: { low: process.env.NODE_ENV === 'development' ? '1250500000000000000000' : '0', high: '0' },
-        isRealData: false,
-        numericValue
-      };
+      return this.createFallbackBalance('CAT', mockBalance);
     }
   }
 
@@ -418,7 +428,6 @@ export class TokenService {
       if (!validatedBalance) {
         console.warn('⚠️ Invalid STRK balance response, trying alternative parsing...');
         
-        // Try alternative parsing for edge cases
         if (balance !== null && balance !== undefined) {
           const fallbackValue = String(balance);
           if (!isNaN(Number(fallbackValue))) {
@@ -460,16 +469,9 @@ export class TokenService {
       console.error(`❌ Error getting STRK balance:`, error);
       
       const mockBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
-      const numericValue = this.parseBalanceToNumber(mockBalance);
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} STRK balance: ${mockBalance}`);
       
-      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} STRK balance: ${mockBalance} (numeric: ${numericValue})`);
-      
-      return {
-        formatted: mockBalance,
-        raw: { low: process.env.NODE_ENV === 'development' ? '45750000000000000000' : '0', high: '0' },
-        isRealData: false,
-        numericValue
-      };
+      return this.createFallbackBalance('STRK', mockBalance);
     }
   }
 
@@ -484,11 +486,11 @@ export class TokenService {
 
       const catResult = catBalance.status === 'fulfilled' 
         ? catBalance.value 
-        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 };
+        : this.createFallbackBalance('CAT', process.env.NODE_ENV === 'development' ? '1,250.50' : '0');
         
       const strkResult = strkBalance.status === 'fulfilled' 
         ? strkBalance.value 
-        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 };
+        : this.createFallbackBalance('STRK', process.env.NODE_ENV === 'development' ? '45.75' : '0');
 
       console.log('✅ All balances retrieved:', {
         CAT: `${catResult.formatted} (${catResult.isRealData ? 'real' : 'fallback'}, numeric: ${catResult.numericValue})`,
@@ -503,8 +505,8 @@ export class TokenService {
       console.error('❌ Error getting all balances:', error);
       
       return {
-        cat: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 },
-        strk: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 }
+        cat: this.createFallbackBalance('CAT', process.env.NODE_ENV === 'development' ? '1,250.50' : '0'),
+        strk: this.createFallbackBalance('STRK', process.env.NODE_ENV === 'development' ? '45.75' : '0')
       };
     }
   }

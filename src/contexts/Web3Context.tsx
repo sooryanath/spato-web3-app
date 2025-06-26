@@ -21,35 +21,49 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     walletState.walletAddress
   );
 
+  // Debug balance state changes
+  useEffect(() => {
+    console.log('🔍 Web3Context: Token state updated:', {
+      balance: tokenState.balance,
+      strkBalance: tokenState.strkBalance,
+      isIssuing: tokenState.isIssuing,
+      hasLastMintResult: !!tokenState.lastMintResult
+    });
+  }, [tokenState]);
+
   const connectWallet = async (walletId?: string) => {
     try {
       console.log('🔄 Web3Context: Starting wallet connection...');
       const service = await connectWalletHook(walletId);
       
       if (service && walletState.walletAddress) {
-        console.log('🔄 Web3Context: Initializing balances after connection...');
-        // Add a small delay to ensure wallet state is fully updated
+        console.log('🔄 Web3Context: Initializing balances after connection...', {
+          hasService: !!service,
+          walletAddress: walletState.walletAddress
+        });
+        
         setTimeout(async () => {
           try {
             await initializeBalances(service, walletState.walletAddress);
             console.log('✅ Web3Context: Balance initialization completed');
           } catch (balanceError) {
             console.error('❌ Web3Context: Balance initialization failed:', balanceError);
-            // Don't throw here, let the balance display fallback values
           }
         }, 1000);
       }
     } catch (error) {
       console.error('❌ Web3Context: Wallet connection failed:', error);
-      // Re-throw so components can handle the error appropriately
       throw error;
     }
   };
 
-  // Enhanced balance initialization with retry mechanism
   useEffect(() => {
     if (walletState.tokenService && walletState.walletAddress && walletState.isConnected) {
-      console.log('🔄 Web3Context: Auto-initializing balances for connected wallet');
+      console.log('🔄 Web3Context: Auto-initializing balances for connected wallet', {
+        hasTokenService: !!walletState.tokenService,
+        walletAddress: walletState.walletAddress,
+        isConnected: walletState.isConnected
+      });
       
       const initializeWithRetry = async (retryCount = 0) => {
         try {
@@ -58,9 +72,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
           console.error(`❌ Web3Context: Auto-initialization failed (attempt ${retryCount + 1}):`, error);
           
-          // Retry up to 2 times with increasing delays
           if (retryCount < 2) {
-            const delay = (retryCount + 1) * 2000; // 2s, 4s delays
+            const delay = (retryCount + 1) * 2000;
             console.log(`🔄 Web3Context: Retrying balance initialization in ${delay}ms...`);
             setTimeout(() => initializeWithRetry(retryCount + 1), delay);
           } else {
@@ -69,7 +82,6 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       };
 
-      // Start initialization with a small delay to ensure wallet is fully ready
       setTimeout(() => initializeWithRetry(), 500);
     }
   }, [walletState.tokenService, walletState.walletAddress, walletState.isConnected, initializeBalances]);
@@ -92,6 +104,14 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshBalance,
     lastMintResult: tokenState.lastMintResult
   };
+
+  console.log('🔍 Web3Context: Providing context value:', {
+    isConnected: value.isConnected,
+    balance: value.balance,
+    strkBalance: value.strkBalance,
+    walletAddress: value.walletAddress,
+    hasTokenService: !!value.tokenService
+  });
 
   return (
     <Web3Context.Provider value={value}>

@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import AuthGuard from "@/components/auth/AuthGuard";
 import Index from "./pages/Index";
 import Documentation from "./pages/Documentation";
 import Login from "./pages/Login";
@@ -26,22 +28,94 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/docs" element={<Documentation />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/bank-dashboard" element={<BankDashboard />} />
-          <Route path="/bank-dashboard/cat-issued" element={<CatIssuedDashboard />} />
-          <Route path="/bank-dashboard/active-requests" element={<ActiveRequestsDashboard />} />
-          <Route path="/bank-dashboard/total-companies" element={<TotalCompaniesDashboard />} />
-          <Route path="/bank-dashboard/active-loans" element={<ActiveLoansExplorer />} />
-          <Route path="/bank-dashboard/disputed-loans" element={<DisputedLoansExplorer />} />
-          <Route path="/company-dashboard" element={<CompanyDashboard />} />
-          <Route path="/vendor-management" element={<VendorManagement />} />
-          <Route path="/vendor-dashboard" element={<VendorDashboard />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/docs" element={<Documentation />} />
+            <Route path="/login" element={<Login />} />
+            
+            {/* Bank Dashboard Routes */}
+            <Route 
+              path="/bank-dashboard" 
+              element={
+                <AuthGuard requiredRole="bank">
+                  <BankDashboard />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/bank-dashboard/cat-issued" 
+              element={
+                <AuthGuard requiredRole="bank">
+                  <CatIssuedDashboard />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/bank-dashboard/active-requests" 
+              element={
+                <AuthGuard requiredRole="bank">
+                  <ActiveRequestsDashboard />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/bank-dashboard/total-companies" 
+              element={
+                <AuthGuard requiredRole="bank">
+                  <TotalCompaniesDashboard />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/bank-dashboard/active-loans" 
+              element={
+                <AuthGuard requiredRole="bank">
+                  <ActiveLoansExplorer />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/bank-dashboard/disputed-loans" 
+              element={
+                <AuthGuard requiredRole="bank">
+                  <DisputedLoansExplorer />
+                </AuthGuard>
+              } 
+            />
+            
+            {/* Company Dashboard Routes */}
+            <Route 
+              path="/company-dashboard" 
+              element={
+                <AuthGuard requiredRole="company">
+                  <CompanyDashboard />
+                </AuthGuard>
+              } 
+            />
+            <Route 
+              path="/vendor-management" 
+              element={
+                <AuthGuard requiredRole="company">
+                  <VendorManagement />
+                </AuthGuard>
+              } 
+            />
+            
+            {/* Vendor Dashboard Routes */}
+            <Route 
+              path="/vendor-dashboard" 
+              element={
+                <AuthGuard requiredRole="vendor">
+                  <VendorDashboard />
+                </AuthGuard>
+              } 
+            />
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

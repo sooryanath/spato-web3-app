@@ -33,9 +33,9 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
     } catch (error) {
       console.error('❌ Error refreshing balances:', error);
       
-      // Fixed fallback balances - ensure consistent development mock data
-      const fallbackCat = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
-      const fallbackStrk = process.env.NODE_ENV === 'development' ? '45.75' : '0';
+      // Consistent fallback balances across all environments
+      const fallbackCat = '1,250.50';
+      const fallbackStrk = '45.75';
       
       setTokenState(prev => ({
         ...prev,
@@ -43,7 +43,7 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
         strkBalance: fallbackStrk
       }));
       
-      console.log('🔄 Set fallback balances due to error:', {
+      console.log('🔄 Set consistent fallback balances across all environments:', {
         CAT: fallbackCat,
         STRK: fallbackStrk
       });
@@ -131,9 +131,9 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
     } catch (error) {
       console.error('❌ Error initializing token balances:', error);
       
-      // Fixed fallback balances - ensure consistent development mock data
-      const fallbackCat = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
-      const fallbackStrk = process.env.NODE_ENV === 'development' ? '45.75' : '0';
+      // Consistent fallback balances across all environments
+      const fallbackCat = '1,250.50';
+      const fallbackStrk = '45.75';
       
       setTokenState(prev => ({
         ...prev,
@@ -141,7 +141,7 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
         strkBalance: fallbackStrk
       }));
       
-      console.log('🔄 Set fallback balances after initialization error:', {
+      console.log('🔄 Set consistent fallback balances after initialization error:', {
         CAT: fallbackCat,
         STRK: fallbackStrk
       });

@@ -11,11 +11,31 @@ const RecentTokenTransfers = () => {
   const { tokenTransfers, tokensReceived } = useCompanyDashboard();
   const { getTransactionsByCompany } = useGlobalTransactions();
 
-  // Get CAT requests from global transactions
+  // Get all transactions for TechCorp Industries
   const companyTransactions = getTransactionsByCompany('TechCorp Industries');
+  
+  // Get CAT requests from global transactions
   const catRequests = companyTransactions
     .filter(tx => tx.type === 'token_issue' && tx.purpose.includes('CAT Request'))
     .slice(0, 2);
+
+  // Get token issuances from bank (received tokens)
+  const bankIssuedTokens = companyTransactions
+    .filter(tx => tx.type === 'token_issue' && tx.from === 'HDFC Bank' && !tx.purpose.includes('CAT Request'))
+    .map(tx => ({
+      id: tx.id,
+      from: tx.from,
+      vendor: tx.from,
+      to: tx.to,
+      amount: tx.amount,
+      purpose: tx.purpose,
+      date: tx.date,
+      time: tx.time,
+      status: tx.status
+    }));
+
+  // Combine tokens received from context and bank issued tokens
+  const allTokensReceived = [...tokensReceived, ...bankIssuedTokens].slice(0, 4);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -32,7 +52,6 @@ const RecentTokenTransfers = () => {
 
   // Show recent 4 transfers and received
   const recentTransfers = tokenTransfers.slice(0, 4);
-  const recentReceived = tokensReceived.slice(0, 4);
 
   const EmptyState = ({ type, icon: Icon }: { type: string; icon: any }) => (
     <div className="text-center py-8 text-gray-500">
@@ -135,10 +154,10 @@ const RecentTokenTransfers = () => {
           </TabsList>
           
           <TabsContent value="received" className="mt-4">
-            {recentReceived.length === 0 ? (
+            {allTokensReceived.length === 0 ? (
               <EmptyState type="tokens received" icon={ArrowDownLeft} />
             ) : (
-              <TransactionList transactions={recentReceived} isReceived={true} />
+              <TransactionList transactions={allTokensReceived} isReceived={true} />
             )}
           </TabsContent>
           

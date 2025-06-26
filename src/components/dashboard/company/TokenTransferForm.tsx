@@ -5,6 +5,7 @@ import { useWeb3 } from '@/contexts/Web3Context';
 import { useToast } from '@/hooks/use-toast';
 import { Send } from "lucide-react";
 import { validateTransferForm } from './TokenTransferValidation';
+import { useCompanyDashboard } from '@/contexts/CompanyDashboardContext';
 import VendorSelector from './transfer/VendorSelector';
 import TokenAmountField from './transfer/TokenAmountField';
 import PurposeSelector from './transfer/PurposeSelector';
@@ -23,6 +24,7 @@ const TokenTransferForm = () => {
   
   const { isConnected, transferTokens } = useWeb3();
   const { toast } = useToast();
+  const { addTokenTransfer } = useCompanyDashboard();
 
   // Using the testnet address for all vendors to test functionality
   const TEST_ADDRESS = '0x02dec0e08e74972df0df86d11089d0bba1e22c87a6c0ede6ffc2c1a2243e3c16';
@@ -61,6 +63,14 @@ const TokenTransferForm = () => {
     setIsTransferring(true);
 
     try {
+      // Add to context immediately
+      addTokenTransfer({
+        vendor: selectedVendor.name,
+        amount: formData.amount,
+        purpose: formData.purpose,
+        txHash: `0x${Date.now().toString(16)}...${Math.random().toString(16).slice(2, 6)}`
+      });
+
       const result = await transferTokens(selectedVendor.address, formData.amount);
       
       toast({

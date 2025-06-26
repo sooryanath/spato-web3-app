@@ -30,7 +30,7 @@ const RecentTransactions = () => {
       id: "TXN-001",
       type: "Token Issue",
       amount: "₹50,00,000",
-      company: "TechCorp Ltd",
+      company: "TechCorp Industries",
       time: "2 hours ago",
       status: "Confirmed"
     },

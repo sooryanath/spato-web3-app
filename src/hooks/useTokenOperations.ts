@@ -28,8 +28,8 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
       }));
       
       console.log('✅ Token balances refreshed successfully:', {
-        CAT: balances.cat.formatted,
-        STRK: balances.strk.formatted
+        CAT: `${balances.cat.formatted} (numeric: ${balances.cat.numericValue})`,
+        STRK: `${balances.strk.formatted} (numeric: ${balances.strk.numericValue})`
       });
     } catch (error) {
       console.error('❌ Error refreshing balances:', error);
@@ -126,8 +126,8 @@ export const useTokenOperations = (tokenService: TokenService | null, walletAddr
       }));
       
       console.log('✅ Token balances initialized:', {
-        CAT: balances.cat.formatted,
-        STRK: balances.strk.formatted
+        CAT: `${balances.cat.formatted} (numeric: ${balances.cat.numericValue})`,
+        STRK: `${balances.strk.formatted} (numeric: ${balances.strk.numericValue})`
       });
     } catch (error) {
       console.error('❌ Error initializing token balances:', error);

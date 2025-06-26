@@ -13,6 +13,7 @@ export interface TokenBalance {
   formatted: string;
   raw: { low: string; high: string };
   isRealData: boolean;
+  numericValue: number; // Add numeric value for easier calculations
 }
 
 export interface MultiTokenBalance {
@@ -112,6 +113,14 @@ export class TokenService {
     return null;
   }
 
+  private parseBalanceToNumber(formatted: string): number {
+    // Remove commas and any currency symbols, then parse as float
+    const cleanString = formatted.replace(/[,₹$]/g, '').trim();
+    const parsed = parseFloat(cleanString);
+    console.log(`🔢 Balance parsing: "${formatted}" -> "${cleanString}" -> ${parsed}`);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
   private async executeWithRetry<T>(
     operation: () => Promise<T>,
     operationName: string,
@@ -152,6 +161,16 @@ export class TokenService {
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       throw new Error('Amount must be a positive number');
+    }
+
+    // Check user balance before transfer
+    const currentBalance = await this.getBalance(this.account.address);
+    const availableBalance = currentBalance.numericValue;
+    
+    console.log(`💰 Balance check: Available ${availableBalance}, Requesting ${numAmount}`);
+    
+    if (numAmount > availableBalance) {
+      throw new Error(`Insufficient balance. Available: ${availableBalance}, Requested: ${numAmount}`);
     }
 
     try {
@@ -299,25 +318,30 @@ export class TokenService {
       );
       
       const formattedWithCommas = formatNumberWithCommas(formatted);
+      const numericValue = this.parseBalanceToNumber(formattedWithCommas);
       
-      console.log(`✅ CAT balance retrieved: ${formattedWithCommas}`);
+      console.log(`✅ CAT balance retrieved: ${formattedWithCommas} (numeric: ${numericValue})`);
       
       return {
         formatted: formattedWithCommas,
         raw: validatedBalance,
-        isRealData: true
+        isRealData: true,
+        numericValue
       };
     } catch (error) {
       console.error(`❌ Error getting CAT balance:`, error);
       
       // Return development mock data or zero balance
       const mockBalance = process.env.NODE_ENV === 'development' ? '1,250.50' : '0';
-      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} CAT balance: ${mockBalance}`);
+      const numericValue = this.parseBalanceToNumber(mockBalance);
+      
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} CAT balance: ${mockBalance} (numeric: ${numericValue})`);
       
       return {
         formatted: mockBalance,
         raw: { low: process.env.NODE_ENV === 'development' ? '1250500000000000000000' : '0', high: '0' },
-        isRealData: false
+        isRealData: false,
+        numericValue
       };
     }
   }
@@ -349,24 +373,29 @@ export class TokenService {
       );
       
       const formattedWithCommas = formatNumberWithCommas(formatted);
+      const numericValue = this.parseBalanceToNumber(formattedWithCommas);
       
-      console.log(`✅ STRK balance retrieved: ${formattedWithCommas}`);
+      console.log(`✅ STRK balance retrieved: ${formattedWithCommas} (numeric: ${numericValue})`);
       
       return {
         formatted: formattedWithCommas,
         raw: validatedBalance,
-        isRealData: true
+        isRealData: true,
+        numericValue
       };
     } catch (error) {
       console.error(`❌ Error getting STRK balance:`, error);
       
       const mockBalance = process.env.NODE_ENV === 'development' ? '45.75' : '0';
-      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} STRK balance: ${mockBalance}`);
+      const numericValue = this.parseBalanceToNumber(mockBalance);
+      
+      console.log(`🔄 Using ${process.env.NODE_ENV === 'development' ? 'mock' : 'fallback'} STRK balance: ${mockBalance} (numeric: ${numericValue})`);
       
       return {
         formatted: mockBalance,
         raw: { low: process.env.NODE_ENV === 'development' ? '45750000000000000000' : '0', high: '0' },
-        isRealData: false
+        isRealData: false,
+        numericValue
       };
     }
   }
@@ -382,15 +411,15 @@ export class TokenService {
 
       const catResult = catBalance.status === 'fulfilled' 
         ? catBalance.value 
-        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false };
+        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 };
         
       const strkResult = strkBalance.status === 'fulfilled' 
         ? strkBalance.value 
-        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false };
+        : { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 };
 
       console.log('✅ All balances retrieved:', {
-        CAT: `${catResult.formatted} (${catResult.isRealData ? 'real' : 'fallback'})`,
-        STRK: `${strkResult.formatted} (${strkResult.isRealData ? 'real' : 'fallback'})`
+        CAT: `${catResult.formatted} (${catResult.isRealData ? 'real' : 'fallback'}, numeric: ${catResult.numericValue})`,
+        STRK: `${strkResult.formatted} (${strkResult.isRealData ? 'real' : 'fallback'}, numeric: ${strkResult.numericValue})`
       });
 
       return {
@@ -401,8 +430,8 @@ export class TokenService {
       console.error('❌ Error getting all balances:', error);
       
       return {
-        cat: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false },
-        strk: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false }
+        cat: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 },
+        strk: { formatted: '0', raw: { low: '0', high: '0' }, isRealData: false, numericValue: 0 }
       };
     }
   }
@@ -449,13 +478,15 @@ export class TokenService {
       );
       
       const formattedWithCommas = formatNumberWithCommas(formatted);
+      const numericValue = this.parseBalanceToNumber(formattedWithCommas);
       
-      console.log(`✅ Total supply retrieved using ${usedFunction}: ${formattedWithCommas}`);
+      console.log(`✅ Total supply retrieved using ${usedFunction}: ${formattedWithCommas} (numeric: ${numericValue})`);
       
       return {
         formatted: formattedWithCommas,
         raw: validatedSupply,
-        isRealData: true
+        isRealData: true,
+        numericValue
       };
     } catch (error) {
       console.error('❌ Error getting total supply:', error);
